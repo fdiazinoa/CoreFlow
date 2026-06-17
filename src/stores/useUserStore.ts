@@ -9,6 +9,7 @@ interface UserState {
   roles: RoleDefinition[];
   isLoading: boolean;
   error: string | null;
+  rolesInitialized: boolean;
 
   // Actions
   fetchUsers: () => Promise<void>;
@@ -64,6 +65,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   roles: [],
   isLoading: false,
   error: null,
+  rolesInitialized: false,
 
   fetchUsers: async () => {
     set({ isLoading: true, error: null });
@@ -127,10 +129,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     try {
       const roles = await RoleSupabaseService.getRoles();
       // If DB is empty, maybe init with default? For now just set.
-      set({ roles });
+      set({ roles, rolesInitialized: true });
     } catch (error: any) {
       console.error("Error fetching roles", error);
-      set({ error: error.message });
+      set({ error: error.message, rolesInitialized: true });
     }
   },
 

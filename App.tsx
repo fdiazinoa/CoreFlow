@@ -17,6 +17,7 @@ import { MaintenanceForm } from './components/MaintenanceForm';
 import { MachineHoursLog } from './components/MachineHoursLog';
 import { Inventory } from './components/Inventory';
 import { Analytics } from './components/Analytics';
+import { MaintenanceCalendar } from './components/MaintenanceCalendar';
 import { Configuration } from './components/Configuration';
 import { UserProfileView } from './components/user/UserProfile';
 // Remove OnboardingWizard if not used or add route
@@ -257,6 +258,8 @@ const AppLayout = () => {
 
             <SidebarItem label={t('sidebar.biAnalytics')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>}
               active={path === '/stats'} onClick={() => navigate('/stats')} disabled={!hasPermission('view_analytics')} />
+            <SidebarItem label={t('sidebar.calendar')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
+              active={path === '/calendar'} onClick={() => navigate('/calendar')} />
 
             <div className="my-2 border-t border-industrial-800 mx-4"></div>
 
@@ -345,7 +348,7 @@ const RequireAuth = ({ children }: { children: React.ReactElement }) => {
 const AppInitializer = () => {
   const { fetchOrders, isInitialized: ordersInitialized } = useWorkOrderStore();
   const { fetchMasterData, isInitialized: masterInitialized } = useMasterStore();
-  const { fetchRoles, roles } = useUserStore(); // roles needed for dependency check? or just run once?
+  const { fetchRoles, rolesInitialized } = useUserStore();
 
   React.useEffect(() => {
     // Only fetch if not initialized
@@ -365,11 +368,11 @@ const AppInitializer = () => {
 
   React.useEffect(() => {
     // Load Roles for RBAC
-    if (roles.length === 0) {
+    if (!rolesInitialized) {
       console.log('AppInitializer: Fetching Roles...');
       fetchRoles();
     }
-  }, [fetchRoles, roles.length]);
+  }, [fetchRoles, rolesInitialized]);
 
   return null;
 }
@@ -440,6 +443,7 @@ const AppRoutes = () => {
         <Route path="machines" element={<MachinesPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="stats" element={<AnalyticsPage />} />
+        <Route path="calendar" element={<MaintenanceCalendar />} />
         <Route path="settings" element={<ConfigurationPage />} />
 
 
