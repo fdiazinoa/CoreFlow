@@ -142,7 +142,7 @@ export const SparePartDetail: React.FC<SparePartDetailProps> = ({ part, onClose 
                     </div>
 
                     {/* Stats Grid 2 */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         <div className="bg-industrial-900/50 p-3 rounded-lg border border-industrial-700">
                             <p className="text-[10px] text-industrial-500 uppercase font-bold mb-1 tracking-wider">Empresa</p>
                             <p className="text-white text-xl font-bold truncate">
@@ -154,6 +154,13 @@ export const SparePartDetail: React.FC<SparePartDetailProps> = ({ part, onClose 
                             <p className="text-[10px] text-industrial-500 uppercase font-bold mb-1 tracking-wider">Categoría</p>
                             <p className="text-white text-xl font-bold truncate">
                                 {currentPart.category}
+                            </p>
+                        </div>
+
+                        <div className="bg-industrial-900/50 p-3 rounded-lg border border-industrial-700">
+                            <p className="text-[10px] text-industrial-500 uppercase font-bold mb-1 tracking-wider">Proveedor</p>
+                            <p className="text-white text-xl font-bold truncate">
+                                {currentPart.supplier || '-'}
                             </p>
                         </div>
 

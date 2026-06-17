@@ -8,11 +8,11 @@ const RECEPTIONS_KEY = 'v2_inventory_receptions';
 const PURCHASE_REQUESTS_KEY = 'v2_inventory_purchase_requests';
 
 const INITIAL_PARTS: SparePart[] = [
-    { id: 'p1', name: 'Ball Bearing 6204', partNumber: 'BB-6204', description: 'Deep groove ball bearing', category: 'Bearings', unitOfMeasure: 'PCS', currentStock: 15, minStock: 5, maxStock: 100, location: 'A-01', subLocation: '', cost: 5.50, createdAt: new Date().toISOString(), company: 'Ravi Caribe Inc.' },
-    { id: 'p2', name: 'Hydraulic Hose 1/2"', partNumber: 'HH-050', description: 'High pressure hose', category: 'Hydraulics', unitOfMeasure: 'M', currentStock: 2, minStock: 10, maxStock: 50, location: 'B-03', subLocation: '', cost: 12.00, createdAt: new Date().toISOString(), company: 'Labels Caribe Inc.' },
-    { id: 'p3', name: 'Limit Switch', partNumber: 'LS-001', description: 'Industrial limit switch', category: 'Electronics', unitOfMeasure: 'PCS', currentStock: 8, minStock: 3, maxStock: 20, location: 'C-02', subLocation: '', cost: 45.00, createdAt: new Date().toISOString(), company: 'Ravi Caribe Inc.' },
-    { id: 'p4', name: 'V-Belt A-48', partNumber: 'VB-A48', description: 'Industrial drive belt', category: 'Transmission', unitOfMeasure: 'PCS', currentStock: 12, minStock: 4, maxStock: 40, location: 'A-05', subLocation: '', cost: 8.75, createdAt: new Date().toISOString(), company: 'Labels Caribe Inc.' },
-    { id: 'p5', name: 'Air Filter Element', partNumber: 'AF-500', description: 'Engine air intake filter', category: 'Filters', unitOfMeasure: 'PCS', currentStock: 20, minStock: 10, maxStock: 100, location: 'D-01', subLocation: '', cost: 15.30, createdAt: new Date().toISOString(), company: 'Ravi Caribe Inc.' },
+    { id: 'p1', name: 'Ball Bearing 6204', partNumber: 'BB-6204', description: 'Deep groove ball bearing', category: 'Bearings', unitOfMeasure: 'PCS', currentStock: 15, minStock: 5, maxStock: 100, location: 'A-01', subLocation: '', cost: 5.50, createdAt: new Date().toISOString(), company: 'Ravi Caribe Inc.', supplier: 'SKF' },
+    { id: 'p2', name: 'Hydraulic Hose 1/2"', partNumber: 'HH-050', description: 'High pressure hose', category: 'Hydraulics', unitOfMeasure: 'M', currentStock: 2, minStock: 10, maxStock: 50, location: 'B-03', subLocation: '', cost: 12.00, createdAt: new Date().toISOString(), company: 'Labels Caribe Inc.', supplier: 'Bosch Rexroth' },
+    { id: 'p3', name: 'Limit Switch', partNumber: 'LS-001', description: 'Industrial limit switch', category: 'Electronics', unitOfMeasure: 'PCS', currentStock: 8, minStock: 3, maxStock: 20, location: 'C-02', subLocation: '', cost: 45.00, createdAt: new Date().toISOString(), company: 'Ravi Caribe Inc.', supplier: 'Siemens' },
+    { id: 'p4', name: 'V-Belt A-48', partNumber: 'VB-A48', description: 'Industrial drive belt', category: 'Transmission', unitOfMeasure: 'PCS', currentStock: 12, minStock: 4, maxStock: 40, location: 'A-05', subLocation: '', cost: 8.75, createdAt: new Date().toISOString(), company: 'Labels Caribe Inc.', supplier: 'SMC' },
+    { id: 'p5', name: 'Air Filter Element', partNumber: 'AF-500', description: 'Engine air intake filter', category: 'Filters', unitOfMeasure: 'PCS', currentStock: 20, minStock: 10, maxStock: 100, location: 'D-01', subLocation: '', cost: 15.30, createdAt: new Date().toISOString(), company: 'Ravi Caribe Inc.', supplier: 'FESTO' },
 ];
 
 const INITIAL_REQUESTS: PartsRequest[] = [
@@ -136,6 +136,7 @@ export class InventoryMockService implements IInventoryService {
             location?: string;
             status?: 'all' | 'low' | 'normal';
             company?: string;
+            supplier?: string;
         }
     ): Promise<{ data: SparePart[], total: number }> {
         let parts = this.getParts();
@@ -158,6 +159,9 @@ export class InventoryMockService implements IInventoryService {
             }
             if (filters.company && filters.company !== 'all') {
                 parts = parts.filter(p => p.company === filters.company);
+            }
+            if (filters.supplier && filters.supplier !== 'all') {
+                parts = parts.filter(p => p.supplier === filters.supplier);
             }
             if (filters.status === 'low') {
                 parts = parts.filter(p => p.currentStock < p.minStock);

@@ -14,6 +14,15 @@ export interface SparePart {
     photoUrl?: string;
     createdAt?: string;
     company?: string;
+    machinePlate?: string;
+    machineName?: string;
+    catalog?: string;
+    tableNo?: string;
+    figure?: string;
+    supplierCode?: string;
+    machineModel?: string;
+    machineLine?: string;
+    supplier?: string;
 }
 
 export type TransactionType = 'IN' | 'OUT' | 'ADJUSTMENT';

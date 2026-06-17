@@ -17,14 +17,17 @@ CREATE TABLE IF NOT EXISTS public.future_features (
 ALTER TABLE public.future_features ENABLE ROW LEVEL SECURITY;
 
 -- Select policy
+DROP POLICY IF EXISTS "Allow select for authenticated users" ON public.future_features;
 CREATE POLICY "Allow select for authenticated users" 
 ON public.future_features FOR SELECT 
 TO authenticated 
 USING (true);
 
 -- All operations policy
+DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON public.future_features;
 CREATE POLICY "Allow all operations for authenticated users" 
 ON public.future_features FOR ALL 
 TO authenticated 
 USING (true) 
 WITH CHECK (true);
+

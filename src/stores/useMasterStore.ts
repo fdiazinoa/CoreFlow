@@ -24,6 +24,7 @@ interface MasterState {
     partLocations: string[];
     partUnits: string[];
     partCompanies: string[];
+    partSuppliers: string[];
 
     // Maintenance Plans Actions
     addMaintenancePlan: (plan: MaintenancePlan) => void;
@@ -60,6 +61,7 @@ interface MasterState {
         location?: string;
         status?: 'all' | 'low' | 'normal';
         company?: string;
+        supplier?: string;
     };
 
     // Actions
@@ -111,6 +113,10 @@ interface MasterState {
     addPartUnit: (unit: string) => Promise<void>;
     removePartUnit: (unit: string) => Promise<void>;
     updatePartUnit: (oldVal: string, newVal: string) => void;
+
+    addPartSupplier: (supplier: string) => Promise<void>;
+    removePartSupplier: (supplier: string) => Promise<void>;
+    updatePartSupplier: (oldVal: string, newVal: string) => void;
 }
 
 export const useMasterStore = create<MasterState>((set, get) => ({
@@ -189,6 +195,7 @@ export const useMasterStore = create<MasterState>((set, get) => ({
     partLocations: [],
     partUnits: [],
     partCompanies: [],
+    partSuppliers: [],
 
     setMachinePage: async (page: number) => {
         set((state) => ({ 
@@ -264,7 +271,8 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                     partCategories,
                     partLocations,
                     partUnits,
-                    partCompanies
+                    partCompanies,
+                    partSuppliers
                 ] = await Promise.all([
                     safeFetch(MasterDataService.getMachines(machinePage, machineLimit, machineFilters), { data: [], total: 0 }, 'machines'),
                     safeFetch(MasterDataService.getTechnicians(), [], 'technicians'),
@@ -277,7 +285,8 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                     safeFetch(MasterDataService.getPartCategories(), [], 'partCategories'),
                     safeFetch(MasterDataService.getPartLocations(), [], 'partLocations'),
                     safeFetch(MasterDataService.getPartUnits(), [], 'partUnits'),
-                    safeFetch(inventoryService.getPartCompanies(), [], 'partCompanies')
+                    safeFetch(inventoryService.getPartCompanies(), [], 'partCompanies'),
+                    safeFetch(MasterDataService.getPartSuppliers(), [], 'partSuppliers')
                 ]);
 
                 const currentState = get();
@@ -303,6 +312,7 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                     partLocations: partLocations.length > 0 ? partLocations : currentState.partLocations,
                     partUnits: partUnits.length > 0 ? partUnits : currentState.partUnits,
                     partCompanies: partCompanies.length > 0 ? partCompanies : currentState.partCompanies,
+                    partSuppliers: partSuppliers.length > 0 ? partSuppliers : currentState.partSuppliers,
                     plantSettings: plantSettings,
                     maintenancePlans: extractedMaintenancePlans,
                     isLoading: false,
@@ -656,6 +666,37 @@ export const useMasterStore = create<MasterState>((set, get) => ({
             set((state) => ({ 
                 partUnits: state.partUnits.map(u => u === oldVal ? newVal : u),
                 parts: state.parts.map(p => p.unitOfMeasure === oldVal ? { ...p, unitOfMeasure: newVal } : p)
+            }));
+        } catch (error: any) {
+            set({ error: error.message });
+            throw error;
+        }
+    },
+
+    addPartSupplier: async (supplier) => {
+        try {
+            const newSupplier = await MasterDataService.createPartSupplier(supplier);
+            set((state) => ({ partSuppliers: [...state.partSuppliers, newSupplier] }));
+        } catch (error: any) {
+            set({ error: error.message });
+            throw error;
+        }
+    },
+    removePartSupplier: async (supplier) => {
+        try {
+            await MasterDataService.removePartSupplier(supplier);
+            set((state) => ({ partSuppliers: state.partSuppliers.filter(s => s !== supplier) }));
+        } catch (error: any) {
+            set({ error: error.message });
+            throw error;
+        }
+    },
+    updatePartSupplier: async (oldVal, newVal) => {
+        try {
+            await MasterDataService.updatePartSupplier(oldVal, newVal);
+            set((state) => ({ 
+                partSuppliers: state.partSuppliers.map(s => s === oldVal ? newVal : s),
+                parts: state.parts.map(p => p.supplier === oldVal ? { ...p, supplier: newVal } : p)
             }));
         } catch (error: any) {
             set({ error: error.message });

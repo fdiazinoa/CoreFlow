@@ -7,6 +7,7 @@ export interface IInventoryService {
         location?: string;
         status?: 'all' | 'low' | 'normal';
         company?: string;
+        supplier?: string;
     }): Promise<{ data: SparePart[], total: number }>;
     getPartCompanies(): Promise<string[]>;
     getAllRequests(): Promise<PartsRequest[]>;

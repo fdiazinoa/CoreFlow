@@ -7,7 +7,7 @@ import { RoleManagement } from './user/RoleManagement';
 import { ProtocolBuilder } from './ProtocolBuilder';
 import { useMasterStore } from '../src/stores/useMasterStore';
 import { NotificationSettings } from './NotificationSettings';
-import { X, UserPlus, Mail, Briefcase, Clock, Calendar, Server, Cpu, Wifi, Plus, MapPin, Layout, Box, Settings, Shield, Pencil, Camera, FileText, Trash2, CornerDownRight, Edit2, Check, Scale, Bell, Lock } from 'lucide-react';
+import { X, UserPlus, Mail, Briefcase, Clock, Calendar, Server, Cpu, Wifi, Plus, MapPin, Layout, Box, Settings, Shield, Pencil, Camera, FileText, Trash2, CornerDownRight, Edit2, Check, Scale, Bell, Lock, Truck } from 'lucide-react';
 
 interface ConfigurationProps {
   machines: Machine[];
@@ -60,7 +60,8 @@ export const Configuration: React.FC<ConfigurationProps> = ({
     // Spare Parts Config
     partCategories, addPartCategory, removePartCategory, updatePartCategory,
     partLocations, addPartLocation, removePartLocation, updatePartLocation,
-    partUnits, addPartUnit, removePartUnit, updatePartUnit
+    partUnits, addPartUnit, removePartUnit, updatePartUnit,
+    partSuppliers, addPartSupplier, removePartSupplier, updatePartSupplier
 
 
   } = useMasterStore();
@@ -256,6 +257,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
   const [newPartCategory, setNewPartCategory] = useState('');
   const [newPartLocation, setNewPartLocation] = useState('');
   const [newPartUnit, setNewPartUnit] = useState('');
+  const [newPartSupplier, setNewPartSupplier] = useState('');
 
   // State for Zones/Lines (Structured)
   // zoneStructures is now passed as prop, aliasing for compatibility
@@ -788,7 +790,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Part Categories */}
               <div className="bg-industrial-800 rounded-lg border border-industrial-700 p-6">
                 <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -956,6 +958,65 @@ export const Configuration: React.FC<ConfigurationProps> = ({
                         />
                         <button
                           onClick={() => handleRemoveFromList(removePartUnit, item)}
+                          className="text-industrial-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Part Suppliers */}
+              <div className="bg-industrial-800 rounded-lg border border-industrial-700 p-6">
+                <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <Truck size={20} className="text-emerald-500" />
+                  Proveedores
+                </h4>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 bg-industrial-900 border border-industrial-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-emerald-500"
+                      placeholder="Nuevo Proveedor"
+                      value={newPartSupplier}
+                      onChange={e => setNewPartSupplier(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddToList(addPartSupplier, newPartSupplier, setNewPartSupplier);
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => handleAddToList(addPartSupplier, newPartSupplier, setNewPartSupplier)}
+                      className="bg-industrial-700 hover:bg-industrial-600 text-white p-2 rounded transition-colors"
+                    >
+                      <Plus size={18} />
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                    {partSuppliers.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-industrial-900/50 p-3 rounded border border-industrial-700/50 group">
+                        <input
+                          type="text"
+                          defaultValue={item}
+                          className="bg-transparent text-industrial-300 border-none focus:ring-0 p-0 w-full mr-2"
+                          onBlur={(e) => {
+                            if (e.target.value !== item && e.target.value.trim() !== '') {
+                              updatePartSupplier(item, e.target.value.trim());
+                            } else {
+                              e.target.value = item;
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.currentTarget.blur();
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => handleRemoveFromList(removePartSupplier, item)}
                           className="text-industrial-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Trash2 size={16} />

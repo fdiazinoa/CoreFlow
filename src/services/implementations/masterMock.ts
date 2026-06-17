@@ -157,6 +157,10 @@ export class MasterMockService {
         return ['PCS', 'M', 'KG', 'L'];
     }
 
+    async getPartSuppliers(): Promise<string[]> {
+        return ['FESTO', 'SMC', 'SKF', 'Siemens', 'Bosch Rexroth'];
+    }
+
     async createMachine(machine: Omit<Machine, 'id'>): Promise<Machine> {
         const machines = loadFromStorage(MACHINES_KEY, INITIAL_MACHINES);
         const newMachine: Machine = {
