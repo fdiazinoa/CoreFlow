@@ -244,6 +244,18 @@ export const PurchaseRequestList: React.FC = () => {
                                         <p className="text-[10px] text-industrial-500 font-medium">Última actualización: {new Date(groupedRequests[key][0].requestDate).toLocaleDateString()}</p>
                                     </div>
                                 </div>
+                                <div className="flex items-center gap-2 pr-4">
+                                    {groupedRequests[key].some(r => r.purchaseRequestNumber.startsWith('SC-PROV-')) && (
+                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-purple-950/80 text-purple-400 border border-purple-800/50">
+                                            Proveedor Internacional
+                                        </span>
+                                    )}
+                                    {groupedRequests[key].some(r => !r.purchaseRequestNumber.startsWith('SC-PROV-')) && (
+                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-800/50">
+                                            Local
+                                        </span>
+                                    )}
+                                </div>
                             </button>
 
                             {expandedGroups[key] && (
@@ -269,7 +281,7 @@ export const PurchaseRequestList: React.FC = () => {
                                                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded w-max uppercase tracking-wider ${
                                                                 req.purchaseRequestNumber.startsWith('SC-PROV-')
                                                                     ? 'bg-purple-950/80 text-purple-400 border border-purple-800/50'
-                                                                    : 'bg-industrial-700/60 text-industrial-300 border border-industrial-600/40'
+                                                                    : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
                                                             }`}>
                                                                 {req.purchaseRequestNumber.startsWith('SC-PROV-') ? 'Proveedor Internacional' : 'Local'}
                                                             </span>
@@ -516,7 +528,7 @@ export const PurchaseRequestList: React.FC = () => {
                                     <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
                                         selectedRequest.purchaseRequestNumber.startsWith('SC-PROV-')
                                             ? 'bg-purple-950/80 text-purple-400 border border-purple-800/50'
-                                            : 'bg-industrial-700/60 text-industrial-300 border border-industrial-600/40'
+                                            : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
                                     }`}>
                                         {selectedRequest.purchaseRequestNumber.startsWith('SC-PROV-') ? 'Proveedor Internacional' : 'Local'}
                                     </span>
