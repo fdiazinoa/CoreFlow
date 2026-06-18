@@ -68,6 +68,13 @@ export interface PurchaseRequestItem {
     partName?: string;
     partNumber?: string;
     company?: string;
+    machinePlate?: string;
+    machineName?: string;
+    catalog?: string;
+    tableNo?: string;
+    figure?: string;
+    unitOfMeasure?: string;
+    supplier?: string;
 }
 
 export interface PurchaseRequest {

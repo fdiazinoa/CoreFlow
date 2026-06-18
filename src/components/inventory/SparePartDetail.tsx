@@ -225,7 +225,7 @@ export const SparePartDetail: React.FC<SparePartDetailProps> = ({ part, onClose 
                                                         onClick={() => setShowPurchaseModal(true)}
                                                         className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded shadow-lg transition-colors flex items-center gap-1.5"
                                                     >
-                                                        Solicitar Compra
+                                                        Solicitud Rápida
                                                     </button>
                                                 )}
                                             </div>

@@ -356,7 +356,14 @@ export class InventoryMockService implements IInventoryService {
                     ...item,
                     partName: partInfo?.name || 'Repuesto Desconocido',
                     partNumber: partInfo?.partNumber || 'N/A',
-                    company: partInfo?.company || ''
+                    company: partInfo?.company || '',
+                    machinePlate: partInfo?.machinePlate || '',
+                    machineName: partInfo?.machineName || '',
+                    catalog: partInfo?.catalog || '',
+                    tableNo: partInfo?.tableNo || '',
+                    figure: partInfo?.figure || '',
+                    unitOfMeasure: partInfo?.unitOfMeasure || '',
+                    supplier: partInfo?.supplier || ''
                 };
             });
 
@@ -703,8 +710,10 @@ export class InventoryMockService implements IInventoryService {
         return { data: grouped, total: grouped.length };
     }
 
-    async createDirectPurchaseRequest(items: { partId: string; quantity: number }[]): Promise<void> {
-        const scNumber = `SC-DIR-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    async createDirectPurchaseRequest(items: { partId: string; quantity: number }[], type?: 'local' | 'proveedor'): Promise<void> {
+        const scNumber = type === 'proveedor'
+            ? `SC-PROV-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+            : `SC-DIR-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         const prs = this.getPurchaseRequests();
         prs.unshift({
             id: `pr-${Date.now()}`,

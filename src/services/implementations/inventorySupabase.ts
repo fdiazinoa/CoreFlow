@@ -676,7 +676,7 @@ export class InventorySupabaseService implements IInventoryService {
             throw error;
         }
 
-        const { data: parts } = await supabase.from('spare_parts').select('id, name, sku, company');
+        const { data: parts } = await supabase.from('spare_parts').select('id, name, sku, company, machine_plate, machine_name, catalog, table_no, figure, unit_of_measure, supplier');
         const partsMap = new Map((parts || []).map(p => [p.id, p]));
 
         const mappedData = (data || []).map(record => {
@@ -688,7 +688,14 @@ export class InventorySupabaseService implements IInventoryService {
                     ...item,
                     partName: partInfo?.name || 'Repuesto Desconocido',
                     partNumber: partInfo?.sku || 'N/A',
-                    company: partInfo?.company || ''
+                    company: partInfo?.company || '',
+                    machinePlate: partInfo?.machine_plate || '',
+                    machineName: partInfo?.machine_name || '',
+                    catalog: partInfo?.catalog || '',
+                    tableNo: partInfo?.table_no || '',
+                    figure: partInfo?.figure || '',
+                    unitOfMeasure: partInfo?.unit_of_measure || '',
+                    supplier: partInfo?.supplier || ''
                 };
             });
 
@@ -714,8 +721,10 @@ export class InventorySupabaseService implements IInventoryService {
         };
     }
 
-    async createDirectPurchaseRequest(items: { partId: string; quantity: number }[]): Promise<void> {
-        const scNumber = `SC-DIR-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    async createDirectPurchaseRequest(items: { partId: string; quantity: number }[], type?: 'local' | 'proveedor'): Promise<void> {
+        const scNumber = type === 'proveedor'
+            ? `SC-PROV-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+            : `SC-DIR-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         
         const payload: any = {
             request_id: null,
