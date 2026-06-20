@@ -17,12 +17,15 @@ interface MaintenanceListProps {
 export const MaintenanceList: React.FC<MaintenanceListProps> = ({ type }) => {
   const { t, language } = useLanguage();
   const { workOrders, pagination, fetchOrders, setPage, loading } = useWorkOrderStore();
-  const { machines, plantSettings } = useMasterStore();
+  const { machines, plantSettings, fetchMasterData, isInitialized: masterInitialized } = useMasterStore();
   const navigate = useNavigate();
 
   React.useEffect(() => {
+    if (!masterInitialized) {
+      fetchMasterData();
+    }
     fetchOrders(1, 50, type);
-  }, [type, fetchOrders]);
+  }, [type, fetchOrders, fetchMasterData, masterInitialized]);
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedZone, setSelectedZone] = React.useState('');
