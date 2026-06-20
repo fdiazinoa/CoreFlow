@@ -34,11 +34,11 @@ export const useWorkOrderStore = create<WorkOrderState>((set, get) => ({
     error: null,
     pagination: {
         page: 1,
-        limit: 50,
+        limit: 25,
         total: 0
     },
 
-    fetchOrders: async (page = 1, limit = 50, formType) => {
+    fetchOrders: async (page = 1, limit = 25, formType) => {
         set({ loading: true, error: null });
         try {
             const result = await workOrderService.getAll(page, limit, formType);

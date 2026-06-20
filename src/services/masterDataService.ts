@@ -4,7 +4,7 @@ import { machineService, technicianService, configService } from './index';
 
 export const MasterDataService = {
   // MACHINES
-  async getMachines(page: number = 1, limit: number = 50, filters?: any): Promise<{ data: Machine[], total: number }> {
+  async getMachines(page: number = 1, limit: number = 25, filters?: any): Promise<{ data: Machine[], total: number }> {
     return machineService.getMachines(page, limit, filters);
   },
 

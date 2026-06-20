@@ -62,7 +62,7 @@ export class InventorySupabaseService implements IInventoryService {
 
     async getAllParts(
         page: number = 1, 
-        limit: number = 50,
+        limit: number = 25,
         filters?: {
             search?: string;
             category?: string;
@@ -650,7 +650,7 @@ export class InventorySupabaseService implements IInventoryService {
         };
     }
 
-    async getAllPurchaseRequests(page: number = 1, limit: number = 50, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
+    async getAllPurchaseRequests(page: number = 1, limit: number = 25, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
         let query = supabase
             .from('purchase_requests')
             .select(`

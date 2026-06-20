@@ -14,7 +14,7 @@ export const InventoryList: React.FC = () => {
     const {
         parts,
         isLoading: loading,
-        fetchMasterData,
+        fetchInventoryData,
         partCategories: categories,
         partLocations: locations,
         partCompanies: companies,
@@ -36,7 +36,7 @@ export const InventoryList: React.FC = () => {
     const statusFilter = inventoryFilters.status || 'all';
 
     useEffect(() => {
-        fetchMasterData();
+        fetchInventoryData();
     }, []);
 
     const generatePDF = () => {

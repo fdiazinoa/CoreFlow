@@ -66,7 +66,7 @@ export const PurchaseRequestList: React.FC = () => {
             await inventoryService.processPurchaseReception(selectedRequest.id, [{ partId, qtyReceived: receivingQty }]);
             
             // Reload requests to get updated status and quantities
-            const res = await inventoryService.getAllPurchaseRequests(currentPage, 50, { searchTerm });
+            const res = await inventoryService.getAllPurchaseRequests(currentPage, 25, { searchTerm });
             setRequests(res.data);
             
             // Update selected request
@@ -88,7 +88,7 @@ export const PurchaseRequestList: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const res = await inventoryService.getAllPurchaseRequests(currentPage, 50, { searchTerm });
+            const res = await inventoryService.getAllPurchaseRequests(currentPage, 25, { searchTerm });
             setRequests(res.data);
             setTotalItems(res.total);
         } catch (error) {
@@ -365,7 +365,7 @@ export const PurchaseRequestList: React.FC = () => {
                         <div className="mt-6 border-t border-industrial-700/50 pt-4">
                             <TablePagination
                                 totalItems={totalItems}
-                                itemsPerPage={50}
+                                itemsPerPage={25}
                                 currentPage={currentPage}
                                 onPageChange={setCurrentPage}
                                 isLoading={isLoading}

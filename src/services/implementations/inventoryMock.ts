@@ -129,7 +129,7 @@ export class InventoryMockService implements IInventoryService {
 
     async getAllParts(
         page: number = 1, 
-        limit: number = 50,
+        limit: number = 25,
         filters?: {
             search?: string;
             category?: string;
@@ -337,7 +337,7 @@ export class InventoryMockService implements IInventoryService {
         throw new Error('Request not found');
     }
 
-    async getAllPurchaseRequests(page: number = 1, limit: number = 50, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
+    async getAllPurchaseRequests(page: number = 1, limit: number = 25, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
         let prs = this.getPurchaseRequests();
         const parts = this.getParts();
         const partsMap = new Map(parts.map(p => [p.id, p]));

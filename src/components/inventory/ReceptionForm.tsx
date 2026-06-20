@@ -31,7 +31,7 @@ export const ReceptionForm: React.FC = () => {
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalHistory, setTotalHistory] = useState(0);
-    const ITEMS_PER_PAGE = 50;
+    const ITEMS_PER_PAGE = 25;
     const [historySearchTerm, setHistorySearchTerm] = useState('');
     const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
     const [selectedHistoryPartId, setSelectedHistoryPartId] = useState('');

@@ -146,7 +146,7 @@ export class WorkOrderSupabaseService implements IWorkOrderService {
         return dbRecord;
     }
 
-    async getAll(page: number = 1, limit: number = 50, formType?: string): Promise<{ data: WorkOrder[], total: number }> {
+    async getAll(page: number = 1, limit: number = 25, formType?: string): Promise<{ data: WorkOrder[], total: number }> {
         const from = (page - 1) * limit;
         const to = from + limit - 1;
 

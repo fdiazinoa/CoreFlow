@@ -96,7 +96,7 @@ const INITIAL_ZONES: ZoneStructure[] = [
 ];
 
 export class MasterMockService {
-    async getMachines(page: number = 1, limit: number = 50, filters?: any): Promise<{ data: Machine[], total: number }> {
+    async getMachines(page: number = 1, limit: number = 25, filters?: any): Promise<{ data: Machine[], total: number }> {
         let machines = loadFromStorage(MACHINES_KEY, INITIAL_MACHINES);
         
         if (filters) {
@@ -211,7 +211,7 @@ export class MasterMockService {
 
         const total = logs.length;
         const page = filters.page || 1;
-        const limit = filters.limit || 50;
+        const limit = filters.limit || 25;
         const from = (page - 1) * limit;
         const to = from + limit;
 

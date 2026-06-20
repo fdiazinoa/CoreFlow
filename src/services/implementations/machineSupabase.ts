@@ -1,11 +1,10 @@
-
 import { supabase, getPaginationRange } from '../supabaseClient';
 import { Machine } from '../../../types';
 
 export const MachineSupabaseService = {
   async getMachines(
     page: number = 1, 
-    limit: number = 50,
+    limit: number = 25,
     filters?: {
       search?: string;
       branch?: string;
@@ -219,7 +218,7 @@ export const MachineSupabaseService = {
     }
   },
 
-  async getRecentMachineHourLogs(limit: number = 50): Promise<any[]> {
+  async getRecentMachineHourLogs(limit: number = 25): Promise<any[]> {
     const { data, error } = await supabase
       .from('machine_hour_logs')
       .select('*')
@@ -277,7 +276,7 @@ export const MachineSupabaseService = {
     limit?: number
   }): Promise<{ data: any[], total: number }> {
     const page = filters.page || 1;
-    const limit = filters.limit || 50;
+    const limit = filters.limit || 25;
     const { from, to } = getPaginationRange(page, limit);
 
     let query = supabase

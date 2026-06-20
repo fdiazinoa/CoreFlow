@@ -66,6 +66,7 @@ interface MasterState {
 
     // Actions
     fetchMasterData: () => Promise<void>;
+    fetchInventoryData: () => Promise<void>;
     setMachinePage: (page: number) => Promise<void>;
     setInventoryPage: (page: number) => Promise<void>;
     setMachineFilters: (filters: Partial<MasterState['machineFilters']>) => Promise<void>;
@@ -175,12 +176,12 @@ export const useMasterStore = create<MasterState>((set, get) => ({
     // Pagination & Filtering
     machinePagination: {
         page: 1,
-        limit: 50,
+        limit: 25,
         total: 0
     },
     inventoryPagination: {
         page: 1,
-        limit: 50,
+        limit: 25,
         total: 0
     },
     machineFilters: {},
@@ -207,10 +208,9 @@ export const useMasterStore = create<MasterState>((set, get) => ({
 
     setInventoryPage: async (page: number) => {
         set((state) => ({ 
-            inventoryPagination: { ...state.inventoryPagination, page },
-            isInitialized: false // Force re-fetch
+            inventoryPagination: { ...state.inventoryPagination, page }
         }));
-        await get().fetchMasterData();
+        await get().fetchInventoryData();
     },
 
     setMachineFilters: async (newFilters) => {
@@ -225,10 +225,32 @@ export const useMasterStore = create<MasterState>((set, get) => ({
     setInventoryFilters: async (newFilters) => {
         set((state) => ({
             inventoryFilters: { ...state.inventoryFilters, ...newFilters },
-            inventoryPagination: { ...state.inventoryPagination, page: 1 }, // Reset to page 1 on filter change
-            isInitialized: false
+            inventoryPagination: { ...state.inventoryPagination, page: 1 }
         }));
-        await get().fetchMasterData();
+        await get().fetchInventoryData();
+    },
+
+    fetchInventoryData: async () => {
+        const state = get();
+        // Prevent flicker: only show loading state if we have no parts yet
+        if (state.parts.length === 0) {
+            set({ isLoading: true, error: null });
+        } else {
+            set({ error: null });
+        }
+        try {
+            const { page, limit } = state.inventoryPagination;
+            const filters = state.inventoryFilters;
+            const result = await inventoryService.getAllParts(page, limit, filters);
+            set({
+                parts: result.data,
+                inventoryPagination: { ...state.inventoryPagination, total: result.total },
+                isLoading: false
+            });
+        } catch (error: any) {
+            console.error('[Store] Failed to fetch inventory data:', error);
+            set({ error: error.message, isLoading: false });
+        }
     },
 
     fetchMasterData: async () => {
@@ -258,40 +280,19 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                 const machineFilters = state.machineFilters;
                 const inventoryFilters = state.inventoryFilters;
 
-                // Execute all fetches in parallel
+                // Phase 1: Fetch core data needed immediately (Dashboard, Map, Auth UI)
                 const [
                     machinesResult,
-                    technicians,
                     zones,
-                    inventoryResult,
-                    branches,
-                    categories,
-                    assetTypes,
-                    plantSettings,
-                    partCategories,
-                    partLocations,
-                    partUnits,
-                    partCompanies,
-                    partSuppliers
+                    plantSettings
                 ] = await Promise.all([
                     safeFetch(MasterDataService.getMachines(machinePage, machineLimit, machineFilters), { data: [], total: 0 }, 'machines'),
-                    safeFetch(MasterDataService.getTechnicians(), [], 'technicians'),
                     safeFetch(MasterDataService.getZones(), [], 'zones'),
-                    safeFetch(inventoryService.getAllParts(inventoryPage, inventoryLimit, inventoryFilters), { data: [], total: 0 }, 'parts'),
-                    safeFetch(MasterDataService.getBranches(), [], 'branches'),
-                    safeFetch(MasterDataService.getCategories(), [], 'categories'),
-                    safeFetch(MasterDataService.getAssetTypes(), [], 'assetTypes'),
-                    safeFetch(SettingsSupabaseService.getSettings(), get().plantSettings, 'plantSettings'),
-                    safeFetch(MasterDataService.getPartCategories(), [], 'partCategories'),
-                    safeFetch(MasterDataService.getPartLocations(), [], 'partLocations'),
-                    safeFetch(MasterDataService.getPartUnits(), [], 'partUnits'),
-                    safeFetch(inventoryService.getPartCompanies(), [], 'partCompanies'),
-                    safeFetch(MasterDataService.getPartSuppliers(), [], 'partSuppliers')
+                    safeFetch(SettingsSupabaseService.getSettings(), get().plantSettings, 'plantSettings')
                 ]);
 
                 const currentState = get();
                 const machines = machinesResult.data;
-                const parts = inventoryResult.data;
 
                 // Extract maintenance plans from machines
                 const extractedMaintenancePlans = machines
@@ -301,23 +302,55 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                 set({
                     machines,
                     machinePagination: { ...currentState.machinePagination, total: machinesResult.total },
-                    inventoryPagination: { ...currentState.inventoryPagination, total: inventoryResult.total },
-                    technicians,
                     zones: zones.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)),
-                    parts,
-                    branches: branches.length > 0 ? branches : currentState.branches,
-                    categories: categories.length > 0 ? categories : currentState.categories,
-                    assetTypes: assetTypes.length > 0 ? assetTypes : currentState.assetTypes,
-                    partCategories: partCategories.length > 0 ? partCategories : currentState.partCategories,
-                    partLocations: partLocations.length > 0 ? partLocations : currentState.partLocations,
-                    partUnits: partUnits.length > 0 ? partUnits : currentState.partUnits,
-                    partCompanies: partCompanies.length > 0 ? partCompanies : currentState.partCompanies,
-                    partSuppliers: partSuppliers.length > 0 ? partSuppliers : currentState.partSuppliers,
                     plantSettings: plantSettings,
                     maintenancePlans: extractedMaintenancePlans,
-                    isLoading: false,
-                    isInitialized: true
+                    isInitialized: true // Unblock UI immediately
                 });
+
+                // Phase 2: Defer secondary data (inventory, dropdowns) to a background task
+                setTimeout(async () => {
+                    const { page: invPage, limit: invLimit } = get().inventoryPagination;
+                    const invFilters = get().inventoryFilters;
+                    const [
+                        inventoryResult,
+                        technicians,
+                        branches,
+                        categories,
+                        assetTypes,
+                        partCategories,
+                        partLocations,
+                        partUnits,
+                        partCompanies,
+                        partSuppliers
+                    ] = await Promise.all([
+                        safeFetch(inventoryService.getAllParts(invPage, invLimit, invFilters), { data: [], total: 0 }, 'parts'),
+                        safeFetch(MasterDataService.getTechnicians(), [], 'technicians'),
+                        safeFetch(MasterDataService.getBranches(), [], 'branches'),
+                        safeFetch(MasterDataService.getCategories(), [], 'categories'),
+                        safeFetch(MasterDataService.getAssetTypes(), [], 'assetTypes'),
+                        safeFetch(MasterDataService.getPartCategories(), [], 'partCategories'),
+                        safeFetch(MasterDataService.getPartLocations(), [], 'partLocations'),
+                        safeFetch(MasterDataService.getPartUnits(), [], 'partUnits'),
+                        safeFetch(inventoryService.getPartCompanies(), [], 'partCompanies'),
+                        safeFetch(MasterDataService.getPartSuppliers(), [], 'partSuppliers')
+                    ]);
+
+                    set({
+                        parts: inventoryResult.data,
+                        inventoryPagination: { ...get().inventoryPagination, total: inventoryResult.total },
+                        technicians,
+                        branches: branches.length > 0 ? branches : get().branches,
+                        categories: categories.length > 0 ? categories : get().categories,
+                        assetTypes: assetTypes.length > 0 ? assetTypes : get().assetTypes,
+                        partCategories: partCategories.length > 0 ? partCategories : get().partCategories,
+                        partLocations: partLocations.length > 0 ? partLocations : get().partLocations,
+                        partUnits: partUnits.length > 0 ? partUnits : get().partUnits,
+                        partCompanies: partCompanies.length > 0 ? partCompanies : get().partCompanies,
+                        partSuppliers: partSuppliers.length > 0 ? partSuppliers : get().partSuppliers,
+                        isLoading: false
+                    });
+                }, 50);
             } catch (error: any) {
                 console.error('Critical error in fetchMasterData:', error);
                 set({ error: error.message, isLoading: false, isInitialized: true });
