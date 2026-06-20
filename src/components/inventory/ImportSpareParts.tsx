@@ -40,7 +40,8 @@ const parseExcelRow = (rawRow: any): Omit<SparePart, 'id'> | null => {
         currentStock: Number(normalizedRow['stockinicial']) || 0, // Stock Inicial va a currentStock
         unitOfMeasure: normalizedRow['unidaddemedida'] || 'PCS',
         cost: parseFloat(normalizedRow['costounitariord'] || normalizedRow['costo'] || '0') || 0,
-        description: normalizedRow['descripcion'] || ''
+        description: normalizedRow['descripcion'] || '',
+        supplier: normalizedRow['proveedor'] || normalizedRow['supplier'] || ''
     } as Omit<SparePart, 'id'>;
 };
 

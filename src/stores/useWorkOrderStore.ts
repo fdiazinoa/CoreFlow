@@ -15,27 +15,30 @@ interface WorkOrderState {
         total: number;
     };
 
+    calendarOrders: WorkOrder[];
     fetchOrders: (page?: number, limit?: number, formType?: string) => Promise<void>;
     setPage: (page: number, formType?: string) => Promise<void>;
     addOrder: (order: Omit<WorkOrder, 'id'>) => Promise<WorkOrder>;
     updateOrder: (id: string, updates: Partial<WorkOrder>) => Promise<void>;
     deleteOrder: (id: string) => Promise<void>;
     getOrderById: (id: string) => WorkOrder | undefined;
+    fetchCalendarOrders: () => Promise<void>;
 }
 
 export const useWorkOrderStore = create<WorkOrderState>((set, get) => ({
     workOrders: [],
     allOrders: [],
+    calendarOrders: [],
     loading: false,
     isInitialized: false, // Add flag
     error: null,
     pagination: {
         page: 1,
-        limit: 50,
+        limit: 25,
         total: 0
     },
 
-    fetchOrders: async (page = 1, limit = 50, formType) => {
+    fetchOrders: async (page = 1, limit = 25, formType) => {
         set({ loading: true, error: null });
         try {
             const result = await workOrderService.getAll(page, limit, formType);
@@ -113,5 +116,18 @@ export const useWorkOrderStore = create<WorkOrderState>((set, get) => ({
 
     getOrderById: (id: string) => {
         return get().workOrders.find(o => o.id === id);
+    },
+
+    fetchCalendarOrders: async () => {
+        set({ loading: true, error: null });
+        try {
+            const result = await workOrderService.getAll(1, 1000);
+            set({
+                calendarOrders: result.data,
+                loading: false
+            });
+        } catch (err: any) {
+            set({ error: err.message || 'Failed to fetch calendar orders', loading: false });
+        }
     }
 }));

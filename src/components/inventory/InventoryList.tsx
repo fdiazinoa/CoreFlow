@@ -14,10 +14,11 @@ export const InventoryList: React.FC = () => {
     const {
         parts,
         isLoading: loading,
-        fetchMasterData,
+        fetchInventoryData,
         partCategories: categories,
         partLocations: locations,
         partCompanies: companies,
+        partSuppliers: suppliers,
         inventoryPagination: pagination,
         setInventoryPage: setPage,
         inventoryFilters,
@@ -28,13 +29,14 @@ export const InventoryList: React.FC = () => {
 
     // Filters (Sync with store)
     const searchTerm = inventoryFilters.search || '';
+    const supplierFilter = inventoryFilters.supplier || '';
     const categoryFilter = inventoryFilters.category || '';
     const companyFilter = inventoryFilters.company || '';
     const locationFilter = inventoryFilters.location || '';
     const statusFilter = inventoryFilters.status || 'all';
 
     useEffect(() => {
-        fetchMasterData();
+        fetchInventoryData();
     }, []);
 
     const generatePDF = () => {
@@ -73,6 +75,7 @@ export const InventoryList: React.FC = () => {
 
         const filterTexts = [];
         if (searchTerm) filterTexts.push(`Búsqueda: ${searchTerm}`);
+        if (supplierFilter) filterTexts.push(`Proveedor: ${supplierFilter}`);
         if (categoryFilter) filterTexts.push(`Categoría: ${categoryFilter}`);
         if (companyFilter) filterTexts.push(`Empresa: ${companyFilter}`);
         if (locationFilter) filterTexts.push(`Tramo: ${locationFilter}`);
@@ -139,7 +142,7 @@ export const InventoryList: React.FC = () => {
 
 
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 <div>
                     <label className="block text-xs font-bold text-industrial-500 uppercase tracking-wider mb-2">Buscar</label>
                     <div className="relative">
@@ -152,6 +155,20 @@ export const InventoryList: React.FC = () => {
                             onChange={(e) => setInventoryFilters({ search: e.target.value })}
                         />
                     </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold text-industrial-500 uppercase tracking-wider mb-2">Proveedor</label>
+                    <select
+                        className="w-full px-4 py-2 bg-industrial-900 border border-industrial-600 rounded-lg focus:ring-2 focus:ring-industrial-accent focus:border-transparent outline-none text-white appearance-none cursor-pointer"
+                        value={supplierFilter}
+                        onChange={(e) => setInventoryFilters({ supplier: e.target.value })}
+                    >
+                        <option value="">Todos</option>
+                        {suppliers.map(sup => (
+                            <option key={sup} value={sup}>{sup}</option>
+                        ))}
+                    </select>
                 </div>
 
                 <div>

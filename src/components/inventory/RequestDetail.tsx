@@ -128,8 +128,8 @@ export const RequestDetail: React.FC<RequestDetailProps> = ({ request, parts, on
 
             const updatedRequest = await inventoryService.deliverParts(localRequest.id, itemsList, selectedReceiver);
 
-            // Refresh global master data to update stock levels in the UI
-            await useMasterStore.getState().fetchMasterData();
+            // Refresh global state so inventory counts update
+            await useMasterStore.getState().fetchInventoryData();
 
             setLocalRequest(updatedRequest);
             setIsProcessing(false);

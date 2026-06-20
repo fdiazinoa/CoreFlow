@@ -320,6 +320,15 @@ export interface SparePart {
   supplier: string;
   leadTimeDays: number;
   company?: string;
+  machinePlate?: string;
+  machineName?: string;
+  catalog?: string;
+  tableNo?: string;
+  figure?: string;
+  supplierCode?: string;
+  machineModel?: string;
+  machineLine?: string;
+
 }
 
 export interface Technician {

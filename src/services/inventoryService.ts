@@ -7,6 +7,7 @@ export interface IInventoryService {
         location?: string;
         status?: 'all' | 'low' | 'normal';
         company?: string;
+        supplier?: string;
     }): Promise<{ data: SparePart[], total: number }>;
     getPartCompanies(): Promise<string[]>;
     getAllRequests(): Promise<PartsRequest[]>;
@@ -25,7 +26,7 @@ export interface IInventoryService {
     // Purchase Request
     savePurchaseRequest(requestId: string, purchaseRequest: any): Promise<PartsRequest>;
     getAllPurchaseRequests(page?: number, limit?: number, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }>;
-    createDirectPurchaseRequest(items: { partId: string; quantity: number }[]): Promise<void>;
+    createDirectPurchaseRequest(items: { partId: string; quantity: number }[], type?: 'local' | 'proveedor'): Promise<void>;
     updatePurchaseRequestStatus(requestId: string, status: 'Pendiente' | 'Parcial' | 'Recibido' | 'Cancelado'): Promise<void>;
     processPurchaseReception(purchaseRequestId: string, itemsReceived: { partId: string; qtyReceived: number }[], notes?: string): Promise<void>;
     getPurchaseRequestsForReception(): Promise<ExtendedPurchaseRequest[]>;

@@ -14,7 +14,16 @@ interface PartCreationFormProps {
 }
 
 export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData, onCancel, onSuccess }) => {
-    const { partCategories, partLocations, partUnits, addPart, updatePart } = useMasterStore();
+    const { 
+        partCategories, 
+        partLocations, 
+        partUnits, 
+        partSuppliers,
+        addPart, 
+        updatePart, 
+        machines, 
+        fetchMasterData 
+    } = useMasterStore();
     const [formData, setFormData] = useState({
         name: '',
         partNumber: '',
@@ -29,12 +38,27 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
         cost: 0,
         photoUrl: '',
         createdAt: new Date().toISOString().split('T')[0],
-        company: ''
+        company: '',
+        machinePlate: '',
+        machineName: '',
+        catalog: '',
+        tableNo: '',
+        figure: '',
+        supplierCode: '',
+        machineModel: '',
+        machineLine: '',
+        supplier: ''
     });
 
     // Formatting state for display
     const [displayCost, setDisplayCost] = useState('');
     const [showImportModal, setShowImportModal] = useState(false);
+
+    useEffect(() => {
+        if (machines.length === 0) {
+            fetchMasterData();
+        }
+    }, [machines.length, fetchMasterData]);
 
     useEffect(() => {
         if (initialData) {
@@ -52,7 +76,16 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
                 cost: initialData.cost,
                 photoUrl: initialData.photoUrl || '',
                 createdAt: initialData.createdAt ? initialData.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
-                company: initialData.company || ''
+                company: initialData.company || '',
+                machinePlate: initialData.machinePlate || '',
+                machineName: initialData.machineName || '',
+                catalog: initialData.catalog || '',
+                tableNo: initialData.tableNo || '',
+                figure: initialData.figure || '',
+                supplierCode: initialData.supplierCode || '',
+                machineModel: initialData.machineModel || '',
+                machineLine: initialData.machineLine || '',
+                supplier: initialData.supplier || ''
             });
             setDisplayCost(formatCurrency(initialData.cost).replace(/,/g, ',')); // Simplified format for display
         }
@@ -153,7 +186,6 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
                 });
 
                 setFeedback({ type: 'success', message: 'Repuesto creado exitosamente.' });
-                // Reset only if create
                 setFormData({
                     name: '',
                     partNumber: '',
@@ -167,7 +199,16 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
                     cost: 0,
                     photoUrl: '',
                     createdAt: new Date().toISOString().split('T')[0],
-                    company: ''
+                    company: '',
+                    machinePlate: '',
+                    machineName: '',
+                    catalog: '',
+                    tableNo: '',
+                    figure: '',
+                    supplierCode: '',
+                    machineModel: '',
+                    machineLine: '',
+                    supplier: ''
                 });
                 setDisplayCost('');
                 if (onSuccess) onSuccess(created as any);
@@ -176,6 +217,18 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
             console.error(error);
             setFeedback({ type: 'error', message: error.message || 'Error al procesar la solicitud.' });
         }
+    };
+
+    const handlePlateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        const matchingMachine = machines.find(m => m.plate === val);
+        setFormData(prev => ({
+            ...prev,
+            machinePlate: val,
+            machineName: matchingMachine ? matchingMachine.name : (val === '' ? '' : prev.machineName),
+            machineModel: matchingMachine ? matchingMachine.model : (val === '' ? '' : prev.machineModel),
+            machineLine: matchingMachine ? matchingMachine.zone : (val === '' ? '' : prev.machineLine)
+        }));
     };
 
     return (
@@ -424,6 +477,137 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
                         value={formData.description}
                         onChange={handleChange}
                     />
+                </div>
+
+                {/* Información Proveedor Section */}
+                <div className="border-t border-industrial-700 pt-6 my-6">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6">Información del Equipo y Proveedor</h3>
+                    
+                    {/* Subdivision 1: Información del Equipo */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Matrícula */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Matrícula (Equipo)</label>
+                            <input
+                                type="text"
+                                name="machinePlate"
+                                list="machines-plates"
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600 font-mono"
+                                placeholder="Escribe para buscar matrícula..."
+                                value={formData.machinePlate}
+                                onChange={handlePlateChange}
+                            />
+                            <datalist id="machines-plates">
+                                {machines.map((m) => m.plate && (
+                                    <option key={m.id} value={m.plate}>
+                                        {m.plate} {m.name ? `- ${m.name}` : ''}
+                                    </option>
+                                ))}
+                            </datalist>
+                        </div>
+
+                        {/* Máquina */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Máquina</label>
+                            <input
+                                type="text"
+                                name="machineName"
+                                readOnly
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600 opacity-60 cursor-not-allowed"
+                                placeholder="Autocompletado desde matrícula..."
+                                value={formData.machineName}
+                            />
+                        </div>
+
+                        {/* Modelo del equipo */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Modelo del equipo</label>
+                            <input
+                                type="text"
+                                name="machineModel"
+                                readOnly
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600 opacity-60 cursor-not-allowed"
+                                placeholder="Autocompletado desde matrícula..."
+                                value={formData.machineModel || ''}
+                            />
+                        </div>
+
+                        {/* Línea */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Línea</label>
+                            <input
+                                type="text"
+                                name="machineLine"
+                                readOnly
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600 opacity-60 cursor-not-allowed"
+                                placeholder="Autocompletado desde matrícula..."
+                                value={formData.machineLine || ''}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Divider line between Equipment and Supplier information */}
+                    <div className="border-t border-industrial-700/50 my-6"></div>
+
+                    {/* Subdivision 2: Información del Proveedor */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Proveedor */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Proveedor</label>
+                            <div className="relative">
+                                <select
+                                    name="supplier"
+                                    className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors appearance-none cursor-pointer"
+                                    value={formData.supplier || ''}
+                                    onChange={handleChange}
+                                >
+                                    <option value="">Seleccionar Proveedor...</option>
+                                    {partSuppliers.map(sup => (
+                                        <option key={sup} value={sup}>{sup}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Catálogo */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Catálogo</label>
+                            <input
+                                type="text"
+                                name="catalog"
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600"
+                                placeholder="Referencia de catálogo..."
+                                value={formData.catalog}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        {/* Tabla */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Tabla</label>
+                            <input
+                                type="text"
+                                name="tableNo"
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600"
+                                placeholder="Número o nombre de tabla..."
+                                value={formData.tableNo}
+                                onChange={handleChange}
+                            />
+                        </div>
+
+                        {/* Figura */}
+                        <div>
+                            <label className="block text-xs font-bold text-industrial-400 uppercase tracking-wider mb-2">Figura</label>
+                            <input
+                                type="text"
+                                name="figure"
+                                className="w-full bg-industrial-900 border border-industrial-600 rounded-lg px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-industrial-600"
+                                placeholder="Número de figura..."
+                                value={formData.figure}
+                                onChange={handleChange}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 <div className="pt-4 border-t border-industrial-700 flex justify-end gap-3">

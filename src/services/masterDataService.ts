@@ -4,7 +4,7 @@ import { machineService, technicianService, configService } from './index';
 
 export const MasterDataService = {
   // MACHINES
-  async getMachines(page: number = 1, limit: number = 50, filters?: any): Promise<{ data: Machine[], total: number }> {
+  async getMachines(page: number = 1, limit: number = 25, filters?: any): Promise<{ data: Machine[], total: number }> {
     return machineService.getMachines(page, limit, filters);
   },
 
@@ -510,6 +510,62 @@ export const MasterDataService = {
 
     // 2. Cascade to spare_parts
     const { error: cascadeError } = await supabase.from('spare_parts').update({ unit_of_measure: newName }).eq('unit_of_measure', oldName);
+    if (cascadeError) throw cascadeError;
+  },
+
+  // Suppliers
+  async getPartSuppliers(): Promise<string[]> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const stored = localStorage.getItem('v2_cmms_part_suppliers');
+      if (stored) return JSON.parse(stored);
+      const defaults = ['FESTO', 'SMC', 'SKF', 'Siemens', 'Bosch Rexroth'];
+      localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(defaults));
+      return defaults;
+    }
+    if (configService) return (configService as any).getPartSuppliers();
+    const { data, error } = await supabase.from('spare_part_suppliers').select('name').order('name');
+    if (error) throw error;
+    return data.map((s: any) => s.name);
+  },
+  async createPartSupplier(name: string): Promise<string> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const list = await this.getPartSuppliers();
+      if (!list.includes(name)) {
+        list.push(name);
+        localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(list));
+      }
+      return name;
+    }
+    const { data, error } = await supabase.from('spare_part_suppliers').insert({ name }).select('name').single();
+    if (error) throw error;
+    return data.name;
+  },
+  async removePartSupplier(name: string): Promise<void> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const list = await this.getPartSuppliers();
+      const filtered = list.filter(s => s !== name);
+      localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(filtered));
+      return;
+    }
+    const { error } = await supabase.from('spare_part_suppliers').delete().eq('name', name);
+    if (error) throw error;
+  },
+  async updatePartSupplier(oldName: string, newName: string): Promise<void> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const list = await this.getPartSuppliers();
+      const index = list.indexOf(oldName);
+      if (index !== -1) {
+        list[index] = newName;
+        localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(list));
+      }
+      return;
+    }
+    // 1. Update config table
+    const { error: configError } = await supabase.from('spare_part_suppliers').update({ name: newName }).eq('name', oldName);
+    if (configError) throw configError;
+
+    // 2. Cascade to spare_parts
+    const { error: cascadeError } = await supabase.from('spare_parts').update({ supplier: newName }).eq('supplier', oldName);
     if (cascadeError) throw cascadeError;
   }
 };

@@ -30,7 +30,7 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const [totalLogs, setTotalLogs] = useState(0);
-    const ITEMS_PER_PAGE = 50;
+    const ITEMS_PER_PAGE = 25;
 
     // Searchable Dropdown State
     const [searchTerm, setSearchTerm] = useState('');

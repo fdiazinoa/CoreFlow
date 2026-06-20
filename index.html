@@ -74,6 +74,182 @@
     input[type="date"] {
       color-scheme: dark;
     }
+
+    @media print {
+      /* Force landscape orientation and margins */
+      @page {
+        size: landscape;
+        margin: 8mm 10mm;
+      }
+
+      /* Global background overrides for print */
+      html, body, #root, #root > div, main {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      /* Hide App Sidebar, Help Desk floating button/overlays, and interactive calendar actions */
+      aside,
+      .print-hide,
+      [aria-label="Abrir Help Desk"],
+      #helpdesk-modal-overlay,
+      #helpdesk-widget-container,
+      .fixed.z-\[9999\] {
+        display: none !important;
+      }
+
+      /* Layout adjustments for print content area */
+      main {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        height: 100% !important;
+      }
+
+      .flex.h-screen {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+
+      /* Calendar wrapper optimization */
+      .h-full.flex.flex-col.bg-industrial-900 {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 0 !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+      }
+
+      /* Heading & Text styling */
+      h2 {
+        color: #0f172a !important;
+        margin-bottom: 4px !important;
+      }
+      h3 {
+        color: #1e293b !important;
+        font-weight: bold !important;
+      }
+      p {
+        color: #475569 !important;
+      }
+
+      /* Override minimum height restrictions to allow compact layout on one page */
+      [class*="min-h-"] {
+        min-height: 0 !important;
+      }
+
+      /* Month view grid sizing - stretch to fill 100% height dynamically */
+      .grid-rows-6 {
+        grid-template-rows: repeat(6, 1fr) !important;
+        flex: 1 1 auto !important;
+        height: 100% !important;
+      }
+
+      /* Flex layout containers stretching without overriding display types */
+      .flex-1 {
+        flex: 1 1 auto !important;
+        height: 100% !important;
+      }
+
+      /* Grid and border adjustments */
+      .border-industrial-800 {
+        border-color: #94a3b8 !important;
+      }
+      .border-industrial-800\/30 {
+        border-color: #cbd5e1 !important;
+      }
+
+      /* Background blocks formatting for print */
+      .bg-industrial-900\/50 {
+        background-color: #e2e8f0 !important;
+        color: #334155 !important;
+        border-bottom: 2px solid #94a3b8 !important;
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+      }
+      .bg-industrial-800\/40,
+      .bg-industrial-900\/20,
+      .bg-industrial-950\/20,
+      .bg-industrial-900\/30 {
+        background-color: #f8fafc !important;
+      }
+
+      /* Texts mapping */
+      .text-slate-100 {
+        color: #0f172a !important;
+      }
+      .text-slate-400 {
+        color: #334155 !important;
+      }
+      .text-industrial-500 {
+        color: #475569 !important;
+      }
+      .text-industrial-600 {
+        color: #64748b !important;
+      }
+      .text-white {
+        color: #0f172a !important;
+      }
+
+      /* Today's indicator circle color adjust */
+      .bg-blue-600 {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* Maintenance labels font sizing and compact layouts */
+      .bg-blue-600\/10, .bg-amber-600\/10 {
+        font-size: 8px !important;
+        line-height: 1.1 !important;
+        padding: 1px 3px !important;
+        margin-bottom: 2px !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* Preventive maintenance card colors for print */
+      .bg-blue-600\/10 {
+        background-color: #eff6ff !important;
+        color: #1e40af !important;
+        border-color: #bfdbfe !important;
+      }
+      .text-blue-300, .text-blue-200 {
+        color: #1e40af !important;
+      }
+
+      /* Corrective maintenance card colors for print */
+      .bg-amber-600\/10 {
+        background-color: #fffbeb !important;
+        color: #92400e !important;
+        border-color: #fde68a !important;
+      }
+      .text-amber-300, .text-amber-200 {
+        color: #92400e !important;
+      }
+
+      /* Hide active scrollbars and scroll constraints */
+      .custom-scrollbar, .overflow-y-auto {
+        overflow: visible !important;
+        max-height: none !important;
+      }
+
+      /* Reduce margin underneath cell headers */
+      .mb-1 {
+        margin-bottom: 2px !important;
+      }
+    }
   </style>
 
 </head>

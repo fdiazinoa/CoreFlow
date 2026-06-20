@@ -66,7 +66,7 @@ export const PurchaseRequestList: React.FC = () => {
             await inventoryService.processPurchaseReception(selectedRequest.id, [{ partId, qtyReceived: receivingQty }]);
             
             // Reload requests to get updated status and quantities
-            const res = await inventoryService.getAllPurchaseRequests(currentPage, 50, { searchTerm });
+            const res = await inventoryService.getAllPurchaseRequests(currentPage, 25, { searchTerm });
             setRequests(res.data);
             
             // Update selected request
@@ -88,7 +88,7 @@ export const PurchaseRequestList: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const res = await inventoryService.getAllPurchaseRequests(currentPage, 50, { searchTerm });
+            const res = await inventoryService.getAllPurchaseRequests(currentPage, 25, { searchTerm });
             setRequests(res.data);
             setTotalItems(res.total);
         } catch (error) {
@@ -128,14 +128,14 @@ export const PurchaseRequestList: React.FC = () => {
         setSelectedItems([...selectedItems, { partId: '', quantity: 1, partName: '' }]);
     };
 
-    const handleCreateDirectRequest = async () => {
+    const handleCreateDirectRequest = async (type: 'local' | 'proveedor') => {
         const validItems = selectedItems.filter(item => item.partId && item.quantity > 0);
         if (validItems.length === 0) return;
 
         setIsSubmitting(true);
         try {
-            await inventoryService.createDirectPurchaseRequest(validItems);
-            alert('✅ Solicitud directa creada exitosamente.');
+            await inventoryService.createDirectPurchaseRequest(validItems, type);
+            alert(`✅ Solicitud ${type === 'proveedor' ? 'a proveedor' : 'local'} creada exitosamente.`);
             setShowDirectModal(false);
             setSelectedItems([]);
             loadData();
@@ -244,6 +244,18 @@ export const PurchaseRequestList: React.FC = () => {
                                         <p className="text-[10px] text-industrial-500 font-medium">Última actualización: {new Date(groupedRequests[key][0].requestDate).toLocaleDateString()}</p>
                                     </div>
                                 </div>
+                                <div className="flex items-center gap-2 pr-4">
+                                    {groupedRequests[key].some(r => r.purchaseRequestNumber.startsWith('SC-PROV-')) && (
+                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-purple-950/80 text-purple-400 border border-purple-800/50">
+                                            Proveedor Internacional
+                                        </span>
+                                    )}
+                                    {groupedRequests[key].some(r => !r.purchaseRequestNumber.startsWith('SC-PROV-')) && (
+                                        <span className="text-[10px] font-bold px-2.5 py-1 rounded uppercase tracking-wider bg-emerald-950/80 text-emerald-400 border border-emerald-800/50">
+                                            Local
+                                        </span>
+                                    )}
+                                </div>
                             </button>
 
                             {expandedGroups[key] && (
@@ -264,7 +276,16 @@ export const PurchaseRequestList: React.FC = () => {
                                             {groupedRequests[key].map(req => (
                                                 <tr key={req.id} className="hover:bg-industrial-700/20 transition-colors">
                                                     <td className="px-6 py-4 align-middle">
-                                                        <span className="text-white font-medium">{req.purchaseRequestNumber}</span>
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-white font-medium">{req.purchaseRequestNumber}</span>
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded w-max uppercase tracking-wider ${
+                                                                req.purchaseRequestNumber.startsWith('SC-PROV-')
+                                                                    ? 'bg-purple-950/80 text-purple-400 border border-purple-800/50'
+                                                                    : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
+                                                            }`}>
+                                                                {req.purchaseRequestNumber.startsWith('SC-PROV-') ? 'Proveedor Internacional' : 'Local'}
+                                                            </span>
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4 align-middle">
                                                         <div className="flex flex-col gap-1.5">
@@ -344,7 +365,7 @@ export const PurchaseRequestList: React.FC = () => {
                         <div className="mt-6 border-t border-industrial-700/50 pt-4">
                             <TablePagination
                                 totalItems={totalItems}
-                                itemsPerPage={50}
+                                itemsPerPage={25}
                                 currentPage={currentPage}
                                 onPageChange={setCurrentPage}
                                 isLoading={isLoading}
@@ -471,16 +492,24 @@ export const PurchaseRequestList: React.FC = () => {
                         <div className="p-6 bg-industrial-900/50 border-t border-industrial-700 flex gap-4">
                             <button
                                 onClick={() => setShowDirectModal(false)}
-                                className="flex-1 py-3 text-industrial-400 font-bold hover:bg-industrial-700 rounded-lg transition-colors border border-industrial-700"
+                                className="px-6 py-3 text-industrial-400 font-bold hover:bg-industrial-700 rounded-lg transition-colors border border-industrial-700"
+                                disabled={isSubmitting}
                             >
                                 Cancelar
                             </button>
                             <button
-                                onClick={handleCreateDirectRequest}
+                                onClick={() => handleCreateDirectRequest('local')}
+                                className="flex-1 py-3 bg-industrial-700 text-white font-bold hover:bg-industrial-600 rounded-lg transition-all border border-industrial-600 shadow-lg"
+                                disabled={isSubmitting || selectedItems.some(i => !i.partId)}
+                            >
+                                {isSubmitting ? 'Generando...' : 'Solicitud de Compra Local'}
+                            </button>
+                            <button
+                                onClick={() => handleCreateDirectRequest('proveedor')}
                                 className="flex-1 py-3 bg-industrial-accent text-white font-bold hover:bg-industrial-accent/90 rounded-lg transition-all shadow-lg"
                                 disabled={isSubmitting || selectedItems.some(i => !i.partId)}
                             >
-                                {isSubmitting ? 'Generando...' : 'Generar Solicitud de Compra'}
+                                {isSubmitting ? 'Generando...' : 'Solicitud a Proveedor'}
                             </button>
                         </div>
                     </div>
@@ -496,6 +525,13 @@ export const PurchaseRequestList: React.FC = () => {
                                 <h3 className="text-xl font-bold flex items-center gap-2">
                                     <Package className="w-6 h-6 text-blue-400" />
                                     Requisición {selectedRequest.purchaseRequestNumber}
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                        selectedRequest.purchaseRequestNumber.startsWith('SC-PROV-')
+                                            ? 'bg-purple-950/80 text-purple-400 border border-purple-800/50'
+                                            : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
+                                    }`}>
+                                        {selectedRequest.purchaseRequestNumber.startsWith('SC-PROV-') ? 'Proveedor Internacional' : 'Local'}
+                                    </span>
                                 </h3>
                                 <p className="text-xs text-industrial-500 font-mono mt-0.5">ID: {selectedRequest.id}</p>
                             </div>

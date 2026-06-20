@@ -2,6 +2,22 @@
 import { supabase } from './supabaseClient';
 import { UserProfile, UserRole } from '../../types';
 
+async function parseEdgeFunctionError(error: any): Promise<Error> {
+  let message = error?.message || String(error);
+  if (error && error.context && typeof error.context.text === 'function') {
+    try {
+      const text = await error.context.text();
+      const parsed = JSON.parse(text);
+      if (parsed && parsed.error) {
+        message = parsed.error;
+      }
+    } catch (_) {
+      // Ignore parsing errors
+    }
+  }
+  return new Error(message);
+}
+
 export const UserSupabaseService = {
   // Get all users (profiles) with notification preferences
   async getUsersWithPreferences(): Promise<UserProfile[]> {
@@ -122,7 +138,7 @@ export const UserSupabaseService = {
 
     if (error) {
       console.error("[UserSupabaseService] Invitation error:", error);
-      throw error;
+      throw await parseEdgeFunctionError(error);
     }
 
     console.log("[UserSupabaseService] Invitation successful:", data);
@@ -171,7 +187,7 @@ export const UserSupabaseService = {
 
     if (error) {
       console.error("Error nativo de invoke:", error);
-      throw error;
+      throw await parseEdgeFunctionError(error);
     }
 
     if (data && data.error) {

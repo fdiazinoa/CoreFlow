@@ -31,7 +31,10 @@ serve(async (req) => {
 
     const generatedPassword = 'CF-' + Math.random().toString(36).slice(-6).toUpperCase();
 
-    // 1. Crear el usuario en Auth
+    let userId;
+    let isExistingUser = false;
+
+    // 1. Crear o recuperar el usuario en Auth
     // El trigger on_auth_user_created crea un perfil básico automáticamente
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
@@ -48,12 +51,57 @@ serve(async (req) => {
     });
 
     if (authError) {
-      console.error("Auth error:", authError.message);
-      throw new Error("AUTH_ERROR: " + authError.message);
-    }
+      if (authError.message.includes("already been registered")) {
+        console.log(`User ${email} already exists in auth. Fetching user info...`);
+        // Find existing user id from profiles or auth.users list
+        const { data: existingProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
 
-    const userId = authData.user.id;
-    console.log("Auth user created:", userId);
+        if (existingProfile) {
+          userId = existingProfile.id;
+          isExistingUser = true;
+        } else {
+          const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+          if (!listError && listData && listData.users) {
+            const foundUser = listData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+            if (foundUser) {
+              userId = foundUser.id;
+              isExistingUser = true;
+            }
+          }
+        }
+
+        if (userId) {
+          console.log(`Found existing user ID: ${userId}. Updating user metadata and password...`);
+          // Update password and metadata for existing user to allow login/access
+          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            password: generatedPassword,
+            user_metadata: {
+              full_name: fullName,
+              role_id: roleId,
+              job_title: jobTitle || '',
+              company_code: companyCode || '',
+              specialties: specialties || [],
+              tenant_id: tenantId || 'primary'
+            }
+          });
+          if (updateError) {
+            console.error("Failed to update existing auth user metadata:", updateError.message);
+          }
+        }
+      }
+
+      if (!userId) {
+        console.error("Auth error:", authError.message);
+        throw new Error("AUTH_ERROR: " + authError.message);
+      }
+    } else {
+      userId = authData.user.id;
+      console.log("Auth user created:", userId);
+    }
 
     // 2. Esperar 500ms para que el trigger DB complete el INSERT inicial
     await new Promise(resolve => setTimeout(resolve, 500));

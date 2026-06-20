@@ -20,7 +20,16 @@ export class InventorySupabaseService implements IInventoryService {
             cost: Number(record.unit_cost || 0),
             photoUrl: record.image_url || null,
             createdAt: record.created_at,
-            company: record.company || ''
+            company: record.company || '',
+            machinePlate: record.machine_plate || '',
+            machineName: record.machine_name || '',
+            catalog: record.catalog || '',
+            tableNo: record.table_no || '',
+            figure: record.figure || '',
+            supplierCode: record.supplier_code || '',
+            machineModel: record.machine_model || '',
+            machineLine: record.machine_line || '',
+            supplier: record.supplier || ''
         };
     }
 
@@ -38,19 +47,29 @@ export class InventorySupabaseService implements IInventoryService {
             sub_location: part.subLocation,
             unit_cost: part.cost,
             image_url: part.photoUrl,
-            company: part.company
+            company: part.company,
+            machine_plate: part.machinePlate,
+            machine_name: part.machineName,
+            catalog: part.catalog,
+            table_no: part.tableNo,
+            figure: part.figure,
+            supplier_code: part.supplierCode,
+            machine_model: part.machineModel,
+            machine_line: part.machineLine,
+            supplier: part.supplier
         };
     }
 
     async getAllParts(
         page: number = 1, 
-        limit: number = 50,
+        limit: number = 25,
         filters?: {
             search?: string;
             category?: string;
             location?: string;
             status?: 'all' | 'low' | 'normal';
             company?: string;
+            supplier?: string;
         }
     ): Promise<{ data: SparePart[], total: number }> {
         const { from, to } = getPaginationRange(page, limit);
@@ -71,6 +90,9 @@ export class InventorySupabaseService implements IInventoryService {
             }
             if (filters.company && filters.company !== 'all') {
                 query = query.eq('company', filters.company);
+            }
+            if (filters.supplier && filters.supplier !== 'all') {
+                query = query.eq('supplier', filters.supplier);
             }
             if (filters.status === 'low') {
                 query = query.eq('is_low_stock', true);
@@ -125,7 +147,16 @@ export class InventorySupabaseService implements IInventoryService {
             p_unit_cost:        partData.cost || 0,
             p_image_url:        partData.photoUrl || null,
             p_created_at:       partData.createdAt || null,
-            p_company:          partData.company || null
+            p_company:          partData.company || null,
+            p_machine_plate:    partData.machinePlate || null,
+            p_machine_name:     partData.machineName || null,
+            p_catalog:          partData.catalog || null,
+            p_table_no:         partData.tableNo || null,
+            p_figure:           partData.figure || null,
+            p_supplier_code:    partData.supplierCode || null,
+            p_machine_model:    partData.machineModel || null,
+            p_machine_line:     partData.machineLine || null,
+            p_supplier:         partData.supplier || null
         });
         if (error) throw error;
         return this.mapDBToPart(Array.isArray(data) ? data[0] : data);
@@ -147,7 +178,16 @@ export class InventorySupabaseService implements IInventoryService {
             p_unit_cost:        updatedPart.cost || 0,
             p_image_url:        updatedPart.photoUrl || null,
             p_created_at:       updatedPart.createdAt || null,
-            p_company:          updatedPart.company || null
+            p_company:          updatedPart.company || null,
+            p_machine_plate:    updatedPart.machinePlate || null,
+            p_machine_name:     updatedPart.machineName || null,
+            p_catalog:          updatedPart.catalog || null,
+            p_table_no:         updatedPart.tableNo || null,
+            p_figure:           updatedPart.figure || null,
+            p_supplier_code:    updatedPart.supplierCode || null,
+            p_machine_model:    updatedPart.machineModel || null,
+            p_machine_line:     updatedPart.machineLine || null,
+            p_supplier:         updatedPart.supplier || null
         });
         if (error) throw error;
         return this.mapDBToPart(Array.isArray(data) ? data[0] : data);
@@ -610,7 +650,7 @@ export class InventorySupabaseService implements IInventoryService {
         };
     }
 
-    async getAllPurchaseRequests(page: number = 1, limit: number = 50, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
+    async getAllPurchaseRequests(page: number = 1, limit: number = 25, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
         let query = supabase
             .from('purchase_requests')
             .select(`
@@ -636,7 +676,7 @@ export class InventorySupabaseService implements IInventoryService {
             throw error;
         }
 
-        const { data: parts } = await supabase.from('spare_parts').select('id, name, sku, company');
+        const { data: parts } = await supabase.from('spare_parts').select('id, name, sku, company, machine_plate, machine_name, catalog, table_no, figure, unit_of_measure, supplier');
         const partsMap = new Map((parts || []).map(p => [p.id, p]));
 
         const mappedData = (data || []).map(record => {
@@ -648,7 +688,14 @@ export class InventorySupabaseService implements IInventoryService {
                     ...item,
                     partName: partInfo?.name || 'Repuesto Desconocido',
                     partNumber: partInfo?.sku || 'N/A',
-                    company: partInfo?.company || ''
+                    company: partInfo?.company || '',
+                    machinePlate: partInfo?.machine_plate || '',
+                    machineName: partInfo?.machine_name || '',
+                    catalog: partInfo?.catalog || '',
+                    tableNo: partInfo?.table_no || '',
+                    figure: partInfo?.figure || '',
+                    unitOfMeasure: partInfo?.unit_of_measure || '',
+                    supplier: partInfo?.supplier || ''
                 };
             });
 
@@ -674,8 +721,10 @@ export class InventorySupabaseService implements IInventoryService {
         };
     }
 
-    async createDirectPurchaseRequest(items: { partId: string; quantity: number }[]): Promise<void> {
-        const scNumber = `SC-DIR-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    async createDirectPurchaseRequest(items: { partId: string; quantity: number }[], type?: 'local' | 'proveedor'): Promise<void> {
+        const scNumber = type === 'proveedor'
+            ? `SC-PROV-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+            : `SC-DIR-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         
         const payload: any = {
             request_id: null,

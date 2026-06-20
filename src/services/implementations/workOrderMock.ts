@@ -147,7 +147,7 @@ export class WorkOrderMockService implements IWorkOrderService {
         saveToStorage(STORAGE_KEY, data);
     }
 
-    async getAll(page: number = 1, limit: number = 50, formType?: string): Promise<{ data: WorkOrder[], total: number }> {
+    async getAll(page: number = 1, limit: number = 25, formType?: string): Promise<{ data: WorkOrder[], total: number }> {
         await this.delay();
         let orders = this.getFromStorage();
         
