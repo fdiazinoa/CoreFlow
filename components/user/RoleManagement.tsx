@@ -171,6 +171,7 @@ export const RoleManagement: React.FC = () => {
 
     const togglePermission = (permId: string) => {
         if (!canManage) return;
+        if (formData.name?.includes('Admin')) return;
         const currentPerms = formData.permissions as Record<string, boolean> || {};
         const newPerms = {
             ...currentPerms,
@@ -317,12 +318,13 @@ export const RoleManagement: React.FC = () => {
                                 <div>
                                     <label className="block text-xs font-medium text-industrial-400 mb-1">Reporta a</label>
                                     <select
-                                        className="w-full bg-industrial-900 border border-industrial-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-industrial-accent transition-colors"
+                                        className="w-full bg-industrial-900 border border-industrial-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-industrial-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         value={formData.parentRoleId || ''}
                                         onChange={(e) => {
                                             setFormData({...formData, parentRoleId: e.target.value || null});
                                             setIsEditing(true);
                                         }}
+                                        disabled={formData.name?.includes('Admin')}
                                     >
                                         <option value="">-- Sin Jefe Directo (Rol Raíz) --</option>
                                         {getAvailableParentRoles().map(r => (
@@ -394,11 +396,12 @@ export const RoleManagement: React.FC = () => {
                                             {perms.map(perm => {
                                                 const permsObj = formData.permissions as Record<string, boolean> || {};
                                                 const isEnabled = permsObj[perm.id] || false;
+                                                const isAdmin = formData.name?.includes('Admin');
                                                 return (
                                                     <div 
                                                         key={perm.id} 
                                                         onClick={() => togglePermission(perm.id)}
-                                                        className={`flex items-start gap-3 p-2 rounded cursor-pointer transition-colors ${isEnabled ? 'bg-industrial-800' : 'hover:bg-industrial-800/50'}`}
+                                                        className={`flex items-start gap-3 p-2 rounded ${isAdmin ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'} transition-colors ${isEnabled ? 'bg-industrial-800' : (isAdmin ? '' : 'hover:bg-industrial-800/50')}`}
                                                     >
                                                         <div className={`mt-0.5 ${isEnabled ? 'text-emerald-500' : 'text-industrial-600'}`}>
                                                             {isEnabled ? <CheckSquare size={16} /> : <Square size={16} />}

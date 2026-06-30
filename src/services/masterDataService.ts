@@ -1,6 +1,13 @@
 import { supabase } from './supabaseClient';
 import { Machine, Technician, ZoneStructure } from '../../types';
-import { machineService, technicianService, configService } from './index';
+import { MachineSupabaseService } from './implementations/machineSupabase';
+import { masterMockService } from './implementations/masterMock';
+
+const useMock = import.meta.env.VITE_USE_MOCK === 'true';
+
+const machineService = useMock ? masterMockService : MachineSupabaseService;
+const technicianService = useMock ? masterMockService : null;
+const configService = useMock ? masterMockService : null;
 
 export const MasterDataService = {
   // MACHINES
