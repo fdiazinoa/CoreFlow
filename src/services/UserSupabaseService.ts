@@ -169,7 +169,7 @@ export const UserSupabaseService = {
         role: roleId,
         job_title: jobTitle || 'Technician',
         tenant_id: tenantId || 'default-tenant',
-        status: 'ACTIVE',
+        status: 'INVITED',
         specialties: specialties || [],
         company_code: companyCode
       };

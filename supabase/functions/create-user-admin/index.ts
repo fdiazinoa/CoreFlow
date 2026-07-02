@@ -118,7 +118,7 @@ serve(async (req) => {
         p_company_code:           companyCode || '',
         p_specialties:            specialties || [],
         p_tenant_id:              tenantId || 'primary',
-        p_status:                 'ACTIVE',
+        p_status:                 'INVITED',
         p_requires_password_change: true
       });
 
@@ -137,7 +137,7 @@ serve(async (req) => {
           company_code:           companyCode || '',
           specialties:            specialties || [],
           tenant_id:              tenantId || 'primary',
-          status:                 'ACTIVE',
+          status:                 'INVITED',
           requires_password_change: true
         }, { onConflict: 'id' })
         .select();

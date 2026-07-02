@@ -178,9 +178,13 @@ export const UserManagement: React.FC = () => {
                                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-emerald-900/30 text-emerald-400 border border-emerald-800">
                                             <CheckCircle size={10} /> Activo
                                         </span>
-                                    ) : (
+                                    ) : user.status === 'INVITED' ? (
                                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-800">
                                             <Mail size={10} /> Invitado
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-red-900/30 text-red-400 border border-red-800">
+                                            <X size={10} /> Inactivo
                                         </span>
                                     )}
                                 </td>
@@ -388,27 +392,38 @@ export const UserManagement: React.FC = () => {
                             </div>
 
                             <div className="space-y-2 pt-2 border-t border-industrial-700">
-                                <label className="text-xs text-industrial-400 font-bold uppercase">Estatus</label>
-                                <div className="flex gap-4">
+                                <label className="text-xs text-industrial-400 font-bold uppercase block">Estatus de Cuenta</label>
+                                <div className="flex items-center justify-between bg-industrial-900/50 p-3 rounded border border-industrial-700">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-industrial-500">Estatus actual:</span>
+                                        {editingUser.status === 'ACTIVE' ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-emerald-900/30 text-emerald-400 border border-emerald-800">
+                                                <CheckCircle size={10} /> Activo
+                                            </span>
+                                        ) : editingUser.status === 'INVITED' ? (
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-yellow-900/30 text-yellow-400 border border-yellow-800">
+                                                <Mail size={10} /> Invitado
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] bg-red-900/30 text-red-400 border border-red-800">
+                                                <X size={10} /> Inactivo
+                                            </span>
+                                        )}
+                                    </div>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
-                                            type="radio"
-                                            name="status"
-                                            checked={editingUser.status === 'ACTIVE'}
-                                            onChange={() => setEditingUser({ ...editingUser, status: 'ACTIVE' })}
-                                            className="accent-emerald-500"
+                                            type="checkbox"
+                                            checked={editingUser.status !== 'INACTIVE'}
+                                            onChange={(e) => {
+                                                const shouldBeActive = e.target.checked;
+                                                setEditingUser({
+                                                    ...editingUser,
+                                                    status: shouldBeActive ? 'ACTIVE' : 'INACTIVE'
+                                                });
+                                            }}
+                                            className="w-4 h-4 rounded text-industrial-accent bg-industrial-900 border-industrial-600 focus:ring-industrial-accent focus:ring-opacity-50"
                                         />
-                                        <span className="text-sm text-white">Activo</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="status"
-                                            checked={editingUser.status === 'INACTIVE'}
-                                            onChange={() => setEditingUser({ ...editingUser, status: 'INACTIVE' })}
-                                            className="accent-red-500"
-                                        />
-                                        <span className="text-sm text-white">Inactivo</span>
+                                        <span className="text-xs text-white font-medium">Permitir Acceso (Activo)</span>
                                     </label>
                                 </div>
                             </div>
