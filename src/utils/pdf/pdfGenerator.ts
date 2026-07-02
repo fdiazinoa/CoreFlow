@@ -9,6 +9,17 @@ import { useUserStore } from '../../stores/useUserStore';
 // Opcional: Logo de la empresa en base64 para reemplazar el texto "RAVICARIBE INC."
 const COMPANY_LOGO_BASE64 = ''; 
 
+// Resolver nombres completos desde el store de usuarios
+const getUserFullName = (userId?: string) => {
+  if (!userId) return '-';
+  try {
+    const users = useUserStore.getState().users || [];
+    const u = users.find((x: any) => x.id === userId);
+    return u ? u.full_name : userId;
+  } catch (e) {
+    return userId;
+  }
+};
 
 export const generateRMant02PDF = (order: WorkOrder, machine?: Machine, logoUrl?: string) => {
   // Configuración del PDF en tamaño Carta (Letter) - 215.9 x 279.4 mm
@@ -29,18 +40,6 @@ export const generateRMant02PDF = (order: WorkOrder, machine?: Machine, logoUrl?
   const borderCol = [200, 210, 200]; // Borde suave
   const textDark = [30, 30, 30]; // Texto principal
   const textMuted = [100, 110, 100]; // Etiquetas
-
-  // Resolver nombres completos desde el store de usuarios
-  const getUserFullName = (userId?: string) => {
-    if (!userId) return '-';
-    try {
-      const users = useUserStore.getState().users || [];
-      const u = users.find((x: any) => x.id === userId);
-      return u ? u.full_name : userId;
-    } catch (e) {
-      return userId;
-    }
-  };
 
   // Intentamos obtener el logo de plantSettings si no viene como parámetro
   let activeLogo = logoUrl || COMPANY_LOGO_BASE64;
@@ -838,7 +837,7 @@ export const generateRMant05PDF = (order: WorkOrder, machine?: Machine, logoUrl?
 
   // Fila 1 (Y = 57)
   drawField("Número de Orden", order.displayId || order.id, xCol1, 57);
-  const applicantName = order.assignedTo || '-'; // Nombre del solicitante
+  const applicantName = getUserFullName(order.assignedTo); // Nombre del solicitante
   drawField("Nombre del Solicitante", applicantName, xCol2, 57);
   const requestDateStr = order.createdDate ? new Date(order.createdDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '-';
   drawField("Fecha y Hora Solicitud", requestDateStr, xCol3, 57);
@@ -946,10 +945,10 @@ export const generateRMant05PDF = (order: WorkOrder, machine?: Machine, logoUrl?
   drawField("Tiempo Empleado (Duración)", durationStr, xCol3, 199);
 
   // Reporte Recibido y Personal Asignado
-  drawField("Reporte Recibido Por", order.requestReceivedBy || '-', xCol1, 211);
+  drawField("Reporte Recibido Por", getUserFullName(order.requestReceivedBy), xCol1, 211);
   const receivedDateStr = order.requestReceivedDate ? new Date(order.requestReceivedDate).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' }) : '-';
   drawField("Fecha y Hora Recibido", receivedDateStr, xCol2, 211);
-  drawField("Personal Asignado / Ejecutante", order.assignedMechanic || order.assignedTo || '-', xCol3, 211);
+  drawField("Personal Asignado / Ejecutante", getUserFullName(order.assignedMechanic || order.assignedTo), xCol3, 211);
 
   // --- PIE DE PÁGINA 1 ---
   doc.setDrawColor(220, 225, 220);
@@ -1187,7 +1186,7 @@ export const generateRMant05PDF = (order: WorkOrder, machine?: Machine, logoUrl?
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   const executorDisplayName = order.signatureExecutor && !order.signatureExecutor.startsWith('data:image')
     ? order.signatureExecutor
-    : (order.assignedMechanic || order.assignedTo || '-');
+    : getUserFullName(order.assignedMechanic || order.assignedTo);
   doc.text(executorDisplayName, margin + 18, sigY + 33.5);
 
   doc.setFont('helvetica', 'bold');
@@ -1239,7 +1238,7 @@ export const generateRMant05PDF = (order: WorkOrder, machine?: Machine, logoUrl?
   doc.setTextColor(textDark[0], textDark[1], textDark[2]);
   const supervisorDisplayName = order.signatureSupervisor && !order.signatureSupervisor.startsWith('data:image')
     ? order.signatureSupervisor
-    : (order.supervisor || '-');
+    : getUserFullName(order.supervisor);
   doc.text(supervisorDisplayName, pageWidth - margin - colSigW + 18, sigY + 33.5);
 
   doc.setFont('helvetica', 'bold');
