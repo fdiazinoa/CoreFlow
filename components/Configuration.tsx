@@ -78,7 +78,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
     currency: 'DOP'
   });
 
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
 
   // Sync prop changes to local state (for initial load)
   React.useEffect(() => {
@@ -87,20 +87,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
     }
   }, [settings]);
 
-  const handleSaveSettings = async () => {
-    if (onUpdateSettings) {
-      setIsSavingSettings(true);
-      try {
-        await onUpdateSettings(settingsForm);
-        alert('✅ Configuración guardada correctamente.');
-      } catch (error) {
-        console.error(error);
-        alert('❌ Error al guardar la configuración. Verifique la conexión o los permisos.');
-      } finally {
-        setIsSavingSettings(false);
-      }
-    }
-  };
+
   const { t } = useLanguage();
 
   // const [settingsTab, setSettingsTab] = useState<'GENERAL' | 'ZONES' | 'EQUIPMENT' | 'SPARE_PARTS'>('GENERAL'); // Removed nested state
@@ -381,19 +368,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
             <h2 className="text-2xl font-bold text-white mb-1">{t('config.title')}</h2>
             <p className="text-industrial-500 text-sm">{t('config.subtitle')}</p>
           </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-industrial-800 hover:bg-industrial-700 text-white text-sm rounded border border-industrial-600 transition-colors">
-              {t('config.export')}
-            </button>
-            <button
-              onClick={handleSaveSettings}
-              disabled={isSavingSettings}
-              className="px-4 py-2 bg-industrial-accent hover:bg-blue-600 text-white text-sm rounded font-medium shadow-lg shadow-blue-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSavingSettings ? 'Guardando...' : t('config.save')}
-            </button>
 
-          </div>
         </div>
       </div>
 
