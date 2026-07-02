@@ -108,6 +108,11 @@ export interface Machine {
   voltage?: number;       // V. 3PH (VAC)
   power?: number;         // P (KVA)
   imageUrl?: string;      // Imagen del Equipo
+
+  // Phase 3 Master ID Relationships
+  brandId?: string;
+  typeId?: string;
+
   documents?: MachineDocument[] | string[];   // Documentos adjuntos (soporta ambos formatos)
   maintenancePlans?: MaintenancePlan[]; // R-MANT-02 Protocols inside JSONB
   criticalParts?: string[]; // IDs of critical spare parts for this machine
@@ -329,6 +334,11 @@ export interface SparePart {
   machineModel?: string;
   machineLine?: string;
 
+  // Phase 3 Master ID Relationships
+  categoryId?: string;
+  companyId?: string;
+  supplierId?: string;
+  locationId?: string;
 }
 
 export interface Technician {

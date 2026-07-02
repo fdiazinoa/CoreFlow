@@ -1,4 +1,5 @@
 import { supabase, getPaginationRange } from '../supabaseClient';
+import { PaginationParams } from '../../types/pagination';
 import { Machine } from '../../../types';
 
 export const MachineSupabaseService = {
@@ -74,6 +75,8 @@ export const MachineSupabaseService = {
         model: record.model || '',
         year: record.year || null,
         imageUrl: record.image_url || '',
+        brandId: record.brand_id || undefined,
+        typeId: record.type_id || undefined,
         isIot: record.is_iot || false,
         isActive: record.is_active !== false, // Default to true if not specified
         runningHours: record.running_hours || 0,
@@ -137,7 +140,9 @@ export const MachineSupabaseService = {
         next_maintenance: machine.nextMaintenance || null,
         documents: machine.documents || [], // ✅ FIX: Persist documents field
         maintenance_plans: machine.maintenancePlans || [], // ✅ FIX: Persist maintenance plans
-        critical_parts: machine.criticalParts || [] // ✅ FIX: Persist Kardex
+        critical_parts: machine.criticalParts || [], // ✅ FIX: Persist Kardex
+        brand_id: machine.brandId || null,
+        type_id: machine.typeId || null
       })
       .select()
       .single();
@@ -186,6 +191,8 @@ export const MachineSupabaseService = {
     if (machine.zone !== undefined) updatePayload.zone = machine.zone;
     if (machine.brand !== undefined) updatePayload.brand = machine.brand;
     if (machine.model !== undefined) updatePayload.model = machine.model;
+    if (machine.brandId !== undefined) updatePayload.brand_id = machine.brandId;
+    if (machine.typeId !== undefined) updatePayload.type_id = machine.typeId;
     if (machine.year !== undefined) updatePayload.year = machine.year;
     if (machine.imageUrl !== undefined) updatePayload.image_url = machine.imageUrl;
     if (machine.isIot !== undefined) updatePayload.is_iot = machine.isIot;
@@ -241,13 +248,20 @@ export const MachineSupabaseService = {
     }));
   },
 
-  async getMachineHourLogs(machineId: string): Promise<any[]> {
+  async getMachineHourLogs(machineId: string, params?: PaginationParams): Promise<any[]> {
     console.log("Service: getMachineHourLogs called for:", machineId);
+    
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 50;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     const { data, error } = await supabase
       .from('machine_hour_logs')
       .select('*')
       .eq('machine_id', machineId)
-      .order('date', { ascending: false });
+      .order('date', { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error('Error fetching machine logs:', error);
@@ -317,50 +331,59 @@ export const MachineSupabaseService = {
   },
 
   async logMachineHours(log: { machineId: string, hoursLogged: number, unit: 'h' | 'km', operator: string, comments?: string }): Promise<any> {
-    // 1. Log the usage
-    const { data, error } = await supabase
+    // 1. Get current machine to update hours
+    const { data: machineData, error: fetchError } = await supabase
+      .from('machines')
+      .select('running_hours')
+      .eq('id', log.machineId)
+      .single();
+
+    if (fetchError) {
+      console.error("Failed to fetch machine hours:", fetchError);
+      throw fetchError;
+    }
+
+    const currentHours = machineData.running_hours || 0;
+    const newTotalHours = currentHours + log.hoursLogged;
+
+    // 2. Update machine hours
+    const { error: updateError } = await supabase
+      .from('machines')
+      .update({ running_hours: newTotalHours, updated_at: new Date().toISOString() })
+      .eq('id', log.machineId);
+
+    if (updateError) {
+      console.error("Failed to update machine hours:", updateError);
+      throw updateError;
+    }
+
+    // 3. Insert log
+    const { data: logData, error: insertError } = await supabase
       .from('machine_hour_logs')
       .insert({
         machine_id: log.machineId,
-        date: new Date().toISOString().split('T')[0], // Current date YYYY-MM-DD
+        date: new Date().toISOString().split('T')[0],
         hours_logged: log.hoursLogged,
-        unit: log.unit,
         operator: log.operator,
-        comments: log.comments
+        comments: log.comments || null,
+        unit: log.unit
       })
       .select()
       .single();
 
-    if (error) throw error;
-
-    // 2. Sync with Machine (if not IoT)
-    try {
-      const { data: machineData, error: machineError } = await supabase
-        .from('machines')
-        .select('is_iot')
-        .eq('id', log.machineId)
-        .single();
-
-      if (!machineError && machineData && !machineData.is_iot) {
-        await supabase
-          .from('machines')
-          .update({ running_hours: log.hoursLogged })
-          .eq('id', log.machineId);
-      }
-    } catch (syncError) {
-      console.error("Failed to sync machine running hours:", syncError);
-      // Do not fail the main request if sync fails, just log it
+    if (insertError) {
+      console.error("Failed to insert log:", insertError);
+      throw insertError;
     }
 
-    // Return mapped object
     return {
-      id: data.id,
-      machineId: data.machine_id,
-      date: data.date,
-      hoursLogged: data.hours_logged,
-      unit: data.unit,
-      operator: data.operator,
-      comments: data.comments
+      id: logData.id,
+      machineId: logData.machine_id,
+      date: logData.date,
+      hoursLogged: logData.hours_logged,
+      unit: logData.unit,
+      operator: logData.operator,
+      comments: logData.comments
     };
   },
 

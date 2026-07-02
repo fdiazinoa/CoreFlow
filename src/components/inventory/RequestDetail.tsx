@@ -163,13 +163,12 @@ export const RequestDetail: React.FC<RequestDetailProps> = ({ request, parts, on
 
     const handleEditSuccess = () => {
         // Reload request data
-        inventoryService.getAllRequests().then(requests => {
-            const updated = requests.find(r => r.id === localRequest.id);
+        inventoryService.getRequestById(localRequest.id).then(updated => {
             if (updated) {
                 setLocalRequest(updated);
                 setIsEditing(false);
             }
-        });
+        }).catch(err => console.error('Error reloading request:', err));
     };
 
     const handleGenerateDetailsPDF = () => {

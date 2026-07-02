@@ -11,7 +11,7 @@ export const MaintenanceCalendar: React.FC = () => {
   const { t, language } = useLanguage();
   const { hasPermission } = useAuth();
   const { calendarOrders, fetchCalendarOrders, loading } = useWorkOrderStore();
-  const { machines } = useMasterStore();
+  const { machines, fetchMasterData, isInitialized: masterInitialized } = useMasterStore();
   const navigate = useNavigate();
 
   // Calendar States
@@ -439,15 +439,14 @@ export const MaintenanceCalendar: React.FC = () => {
                       {order.interval && (
                         <span>Intervalo: <strong className="text-white">{order.interval}</strong></span>
                       )}
-                      {order.priority && (
-                        <span>Prioridad: <strong className="text-white">{order.priority}</strong></span>
-                      )}
                     </div>
                   </div>
                   
                   <div className="text-right flex flex-col justify-between h-full min-h-[60px] text-xs">
-                    <span className="bg-industrial-800 text-industrial-300 px-2 py-0.5 rounded border border-industrial-700">
-                      {order.status}
+                    <span className="bg-industrial-800 text-industrial-300 px-2 py-0.5 rounded border border-industrial-700 uppercase font-bold tracking-wide">
+                      {order.currentStage === 'CLOSED' ? 'CERRADO' :
+                       order.currentStage === 'HANDOVER' ? 'SUPERVISIÓN' :
+                       order.currentStage === 'EXECUTION' ? 'EJECUCIÓN' : 'SOLICITUD'}
                     </span>
                     <span className="text-industrial-500 font-mono mt-auto block">
                       {order.startTime && order.endTime ? `${order.startTime} - ${order.endTime}` : ''}

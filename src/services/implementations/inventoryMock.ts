@@ -1,4 +1,5 @@
 import { SparePart, PartsRequest, InventoryTransaction, RequestStatus, TransactionType, PurchaseRequest, ExtendedPurchaseRequest, StockReception } from '../../types/inventory';
+import { PaginationParams, PaginatedResult } from '../../types/pagination';
 import { saveToStorage, loadFromStorage } from '../../utils/persistence';
 
 const PARTS_KEY = 'v2_inventory_parts';
@@ -197,8 +198,46 @@ export class InventoryMockService implements IInventoryService {
         return Array.from(companies).sort();
     }
 
-    async getAllRequests(): Promise<PartsRequest[]> {
-        return this.getRequests();
+    async getAllRequests(params?: PaginationParams, filters?: { searchTerm?: string; status?: string; priority?: string; startDate?: string; endDate?: string }): Promise<PaginatedResult<PartsRequest>> {
+        let allRequests = this.getRequests();
+
+        if (filters?.searchTerm) {
+            const s = filters.searchTerm.toLowerCase();
+            allRequests = allRequests.filter(r => r.requestNumber.toLowerCase().includes(s) || r.technicianId.toLowerCase().includes(s));
+        }
+        if (filters?.status && filters.status !== 'all') {
+            allRequests = allRequests.filter(r => r.status === filters.status);
+        }
+        if (filters?.priority && filters.priority !== 'all') {
+            allRequests = allRequests.filter(r => r.priority === filters.priority);
+        }
+        if (filters?.startDate) {
+            allRequests = allRequests.filter(r => r.createdDate >= `${filters.startDate}T00:00:00`);
+        }
+        if (filters?.endDate) {
+            allRequests = allRequests.filter(r => r.createdDate <= `${filters.endDate}T23:59:59`);
+        }
+
+        const page = params?.page || 1;
+        const pageSize = params?.pageSize || 25;
+        const total = allRequests.length;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize;
+        
+        const mappedData = allRequests.slice(from, to).map(r => ({ ...r, items: [] }));
+        return {
+            data: mappedData,
+            count: total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+        };
+    }
+
+    async getRequestById(id: string): Promise<PartsRequest> {
+        const req = this.getRequests().find(r => r.id === id);
+        if (!req) throw new Error('Request not found');
+        return req;
     }
 
     /**
@@ -337,7 +376,7 @@ export class InventoryMockService implements IInventoryService {
         throw new Error('Request not found');
     }
 
-    async getAllPurchaseRequests(page: number = 1, limit: number = 25, filters?: { searchTerm?: string }): Promise<{ data: ExtendedPurchaseRequest[], total: number }> {
+    async getAllPurchaseRequests(params?: PaginationParams, filters?: { searchTerm?: string }): Promise<PaginatedResult<ExtendedPurchaseRequest>> {
         let prs = this.getPurchaseRequests();
         const parts = this.getParts();
         const partsMap = new Map(parts.map(p => [p.id, p]));
@@ -371,12 +410,8 @@ export class InventoryMockService implements IInventoryService {
             const sourceReq = requests.find(r => r.id === record.requestId);
 
             return {
-                id: record.id,
-                purchaseRequestNumber: record.purchaseRequestNumber,
-                requestDate: record.requestDate,
-                requestedBy: record.requestedBy,
+                ...record,
                 items: mappedItems,
-                requestId: record.requestId,
                 sourceRequestNumber: sourceReq?.requestNumber || (record.purchaseRequestNumber.includes('SC-REQ-SPR-00009') ? 'SPR-00009' : record.purchaseRequestNumber.includes('SC-REQ-SPR-00003') ? 'SPR-00003' : undefined),
                 sparePartName: firstItem.partName || 'N/A',
                 sparePartNumber: firstItem.partNumber || 'N/A',
@@ -385,11 +420,19 @@ export class InventoryMockService implements IInventoryService {
         });
 
         // Pagination
-        const from = (page - 1) * limit;
-        const to = from + limit;
-        const pagedData = mappedData.slice(from, to);
-
-        return { data: pagedData, total: mappedData.length };
+        const page = params?.page || 1;
+        const pageSize = params?.pageSize || 25;
+        const total = mappedData.length;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize;
+        
+        return { 
+            data: mappedData.slice(from, to), 
+            count: total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+        };
     }
 
     async closeRequest(requestId: string): Promise<PartsRequest> {
@@ -651,7 +694,7 @@ export class InventoryMockService implements IInventoryService {
         return result;
     }
 
-    async getReceptions(filters?: { searchTerm?: string; partId?: string; startDate?: string; endDate?: string }): Promise<{ data: StockReception[], total: number }> {
+    async getReceptions(params?: PaginationParams, filters?: { searchTerm?: string; partId?: string; startDate?: string; endDate?: string }): Promise<PaginatedResult<StockReception>> {
         let receptions = loadFromStorage<StockReception[]>(RECEPTIONS_KEY, []);
 
         if (filters?.searchTerm || filters?.partId) {
@@ -705,9 +748,26 @@ export class InventoryMockService implements IInventoryService {
             };
         });
 
-        const grouped = this.groupReceptions(mapped);
+        const page = params?.page || 1;
+        const pageSize = params?.pageSize || 25;
+        const total = mapped.length;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize;
 
-        return { data: grouped, total: grouped.length };
+        return { 
+            data: mapped.slice(from, to).map(r => ({ ...r, items: [] })), 
+            count: total,
+            page,
+            pageSize,
+            totalPages: Math.ceil(total / pageSize)
+        };
+    }
+
+    async getReceptionById(id: string): Promise<StockReception> {
+        const receptions = loadFromStorage<StockReception[]>(RECEPTIONS_KEY, []);
+        const rec = receptions.find(r => r.id === id);
+        if (!rec) throw new Error('Reception not found');
+        return rec;
     }
 
     async createDirectPurchaseRequest(items: { partId: string; quantity: number }[], type?: 'local' | 'proveedor'): Promise<void> {
@@ -736,7 +796,8 @@ export class InventoryMockService implements IInventoryService {
     }
 
     async getPurchaseRequestsForReception(): Promise<ExtendedPurchaseRequest[]> {
-        const res = await this.getAllPurchaseRequests(1, 1000);
+        // Fetch all purchase requests, we will filter for Pending/Partial since there could be differences in casing
+        const res = await this.getAllPurchaseRequests({ page: 1, pageSize: 1000 });
         return res.data.filter(pr => 
             pr.status?.toLowerCase() === 'pendiente' || 
             pr.status?.toLowerCase() === 'parcial'

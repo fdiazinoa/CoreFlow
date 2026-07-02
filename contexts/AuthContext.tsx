@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile, UserRole } from '../types';
 import { supabase } from '../src/services/supabaseClient';
@@ -20,6 +20,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const initialCheckComplete = useRef(false);
 
   // Helper: Map Supabase User to UserProfile (Fallback)
   const mapSupabaseUser = (sbUser: any): UserProfile => {
@@ -135,6 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (mounted) {
         console.log("AuthContext: Session check complete (or timed out). Clearing loading state.");
+        initialCheckComplete.current = true;
         setIsLoading(false);
       }
     };
@@ -190,7 +192,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } catch (err) {
         console.error("Auth state change error:", err);
       } finally {
-        if (mounted) setIsLoading(false);
+        if (mounted && initialCheckComplete.current) {
+          setIsLoading(false);
+        }
       }
     });
 
