@@ -45,19 +45,41 @@ export const ReceptionForm: React.FC = () => {
 
     const loadHistory = () => {
         setLoadingHistory(true);
-        inventoryService.getReceptions({
-            searchTerm: historySearchTerm || undefined,
-            partId: selectedHistoryPartId || undefined,
-            startDate: startDate || undefined,
-            endDate: endDate || undefined
-        })
+        inventoryService.getReceptions(
+            { page: currentPage, pageSize: ITEMS_PER_PAGE },
+            {
+                searchTerm: historySearchTerm || undefined,
+                partId: selectedHistoryPartId || undefined,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined
+            }
+        )
             .then(res => {
-                console.log("HISTORY LOAD RET", res.data.length, res.total);
+                console.log("HISTORY LOAD RET", res.data.length, res.count);
                 setReceptions(res.data);
-                setTotalHistory(res.total);
+                setTotalHistory(res.count || 0);
             })
-            .catch(err => console.error('Error loading reception history:', err))
             .finally(() => setLoadingHistory(false));
+    };
+
+    const toggleExpand = async (id: string) => {
+        if (expandedId === id) {
+            setExpandedId(null);
+            return;
+        }
+        
+        setExpandedId(id);
+        
+        // Fetch details if items are empty
+        const rec = receptions.find(r => r.id === id);
+        if (rec && (!rec.items || rec.items.length === 0)) {
+             try {
+                 const fullRec = await inventoryService.getReceptionById(id);
+                 setReceptions(prev => prev.map(p => p.id === id ? { ...p, items: fullRec.items } : p));
+             } catch(err) {
+                 console.error('Error fetching reception details:', err);
+             }
+        }
     };
 
     // Load history whenever switching to that tab, or search term (if no part selected), partId, or date range changes
@@ -580,7 +602,7 @@ export const ReceptionForm: React.FC = () => {
                                     {/* Row header */}
                                     <button
                                         className="w-full flex items-center justify-between px-4 py-3 bg-industrial-900/50 hover:bg-industrial-700/40 transition-colors text-left"
-                                        onClick={() => setExpandedId(expandedId === rec.id ? null : rec.id)}
+                                        onClick={() => toggleExpand(rec.id)}
                                     >
                                         <div className="flex items-center gap-4">
                                             <span className="p-1 bg-emerald-900/30 rounded border border-emerald-800">

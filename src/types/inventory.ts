@@ -23,6 +23,10 @@ export interface SparePart {
     machineModel?: string;
     machineLine?: string;
     supplier?: string;
+    categoryId?: string;
+    companyId?: string;
+    supplierId?: string;
+    locationId?: string;
 }
 
 export type TransactionType = 'IN' | 'OUT' | 'ADJUSTMENT';
@@ -108,4 +112,19 @@ export interface StockReception {
     items: StockReceptionItem[];
     notes?: string;
     status?: string;
+}
+
+export interface DeliverPartItem {
+    partId: string;
+    quantity: number;
+}
+
+export interface DeliverPartResult {
+    success: boolean;
+    processed: number;
+    errors?: string[];
+}
+
+export interface DeliverPartError {
+    message: string;
 }

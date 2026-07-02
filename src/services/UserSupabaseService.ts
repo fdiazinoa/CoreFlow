@@ -299,10 +299,13 @@ export const UserSupabaseService = {
       return;
     }
 
-    const promises = updates.map(update => 
-      this.updateUserNotificationPreferences(update.userId, update.preferences)
-    );
-    
-    await Promise.all(promises);
+    const { error } = await supabase.rpc('update_notification_preferences_bulk', {
+      p_payload: updates
+    });
+
+    if (error) {
+      console.error("[UserSupabaseService] Error en bulk update:", error);
+      throw error;
+    }
   }
 };

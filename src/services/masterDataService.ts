@@ -271,9 +271,9 @@ export const MasterDataService = {
       return defaults;
     }
     if (configService) return configService.getAssetTypes();
-    const { data, error } = await supabase.from('asset_types').select('name').order('name');
+    const { data, error } = await supabase.from('machine_types').select('name').order('name');
     if (error) throw error;
-    return data.map((t: any) => t.name);
+    return data.map(d => d.name);
   },
   async createAssetType(name: string): Promise<string> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
@@ -284,18 +284,18 @@ export const MasterDataService = {
       }
       return name;
     }
-    const { data, error } = await supabase.from('asset_types').insert({ name }).select('name').single();
+    const { data, error } = await supabase.from('machine_types').insert({ name }).select('name').single();
     if (error) throw error;
     return data.name;
   },
   async removeAssetType(name: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getAssetTypes();
-      const filtered = list.filter(t => t !== name);
+      const filtered = list.filter((n: string) => n !== name);
       localStorage.setItem('v2_cmms_asset_types', JSON.stringify(filtered));
       return;
     }
-    const { error } = await supabase.from('asset_types').delete().eq('name', name);
+    const { error } = await supabase.from('machine_types').delete().eq('name', name);
     if (error) throw error;
   },
 
@@ -353,14 +353,14 @@ export const MasterDataService = {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const stored = localStorage.getItem('v2_cmms_part_categories');
       if (stored) return JSON.parse(stored);
-      const defaults = ['Bearings', 'Hydraulics', 'Electronics', 'Transmission', 'Filters'];
+      const defaults = ['MECHANICAL', 'ELECTRICAL', 'HYDRAULIC', 'PNEUMATIC', 'CONSUMABLE'];
       localStorage.setItem('v2_cmms_part_categories', JSON.stringify(defaults));
       return defaults;
     }
     if (configService) return configService.getPartCategories();
-    const { data, error } = await supabase.from('spare_part_categories').select('name').order('name');
+    const { data, error } = await supabase.from('part_categories').select('name').order('name');
     if (error) throw error;
-    return data.map((c: any) => c.name);
+    return data.map(d => d.name);
   },
   async createPartCategory(name: string): Promise<string> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
@@ -371,18 +371,18 @@ export const MasterDataService = {
       }
       return name;
     }
-    const { data, error } = await supabase.from('spare_part_categories').insert({ name }).select('name').single();
+    const { data, error } = await supabase.from('part_categories').insert({ name }).select('name').single();
     if (error) throw error;
     return data.name;
   },
   async removePartCategory(name: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getPartCategories();
-      const filtered = list.filter(c => c !== name);
+      const filtered = list.filter((n: string) => n !== name);
       localStorage.setItem('v2_cmms_part_categories', JSON.stringify(filtered));
       return;
     }
-    const { error } = await supabase.from('spare_part_categories').delete().eq('name', name);
+    const { error } = await supabase.from('part_categories').delete().eq('name', name);
     if (error) throw error;
   },
 
@@ -391,14 +391,14 @@ export const MasterDataService = {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const stored = localStorage.getItem('v2_cmms_part_locations');
       if (stored) return JSON.parse(stored);
-      const defaults = ['A-01', 'B-03', 'C-02', 'A-05', 'D-01'];
+      const defaults = ['BODEGA-A', 'BODEGA-B', 'ESTANTE-1'];
       localStorage.setItem('v2_cmms_part_locations', JSON.stringify(defaults));
       return defaults;
     }
     if (configService) return configService.getPartLocations();
-    const { data, error } = await supabase.from('spare_part_locations').select('name').order('name');
+    const { data, error } = await supabase.from('part_locations').select('name').order('name');
     if (error) throw error;
-    return data.map((l: any) => l.name);
+    return data.map(d => d.name);
   },
   async createPartLocation(name: string): Promise<string> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
@@ -409,18 +409,18 @@ export const MasterDataService = {
       }
       return name;
     }
-    const { data, error } = await supabase.from('spare_part_locations').insert({ name }).select('name').single();
+    const { data, error } = await supabase.from('part_locations').insert({ name }).select('name').single();
     if (error) throw error;
     return data.name;
   },
   async removePartLocation(name: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getPartLocations();
-      const filtered = list.filter(l => l !== name);
+      const filtered = list.filter((n: string) => n !== name);
       localStorage.setItem('v2_cmms_part_locations', JSON.stringify(filtered));
       return;
     }
-    const { error } = await supabase.from('spare_part_locations').delete().eq('name', name);
+    const { error } = await supabase.from('part_locations').delete().eq('name', name);
     if (error) throw error;
   },
 
@@ -466,18 +466,15 @@ export const MasterDataService = {
   async updatePartCategory(oldName: string, newName: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getPartCategories();
-      const index = list.indexOf(oldName);
-      if (index !== -1) {
-        list[index] = newName;
-        localStorage.setItem('v2_cmms_part_categories', JSON.stringify(list));
-      }
+      const updated = list.map((n: string) => n === oldName ? newName : n);
+      localStorage.setItem('v2_cmms_part_categories', JSON.stringify(updated));
       return;
     }
     // 1. Update config table
-    const { error: configError } = await supabase.from('spare_part_categories').update({ name: newName }).eq('name', oldName);
+    const { error: configError } = await supabase.from('part_categories').update({ name: newName }).eq('name', oldName);
     if (configError) throw configError;
 
-    // 2. Cascade to spare_parts
+    // 2. Cascade to spare_parts (Wait, ON UPDATE CASCADE does this automatically for FKs in phase 3, but let's keep it for fallback)
     const { error: cascadeError } = await supabase.from('spare_parts').update({ category: newName }).eq('category', oldName);
     if (cascadeError) throw cascadeError;
   },
@@ -485,15 +482,12 @@ export const MasterDataService = {
   async updatePartLocation(oldName: string, newName: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getPartLocations();
-      const index = list.indexOf(oldName);
-      if (index !== -1) {
-        list[index] = newName;
-        localStorage.setItem('v2_cmms_part_locations', JSON.stringify(list));
-      }
+      const updated = list.map((n: string) => n === oldName ? newName : n);
+      localStorage.setItem('v2_cmms_part_locations', JSON.stringify(updated));
       return;
     }
     // 1. Update config table
-    const { error: configError } = await supabase.from('spare_part_locations').update({ name: newName }).eq('name', oldName);
+    const { error: configError } = await supabase.from('part_locations').update({ name: newName }).eq('name', oldName);
     if (configError) throw configError;
 
     // 2. Cascade to spare_parts
@@ -525,14 +519,14 @@ export const MasterDataService = {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const stored = localStorage.getItem('v2_cmms_part_suppliers');
       if (stored) return JSON.parse(stored);
-      const defaults = ['FESTO', 'SMC', 'SKF', 'Siemens', 'Bosch Rexroth'];
+      const defaults = ['PROVEEDOR-1', 'PROVEEDOR-2', 'PROVEEDOR-3'];
       localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(defaults));
       return defaults;
     }
     if (configService) return (configService as any).getPartSuppliers();
-    const { data, error } = await supabase.from('spare_part_suppliers').select('name').order('name');
+    const { data, error } = await supabase.from('part_suppliers').select('name').order('name');
     if (error) throw error;
-    return data.map((s: any) => s.name);
+    return data.map(d => d.name);
   },
   async createPartSupplier(name: string): Promise<string> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
@@ -543,32 +537,29 @@ export const MasterDataService = {
       }
       return name;
     }
-    const { data, error } = await supabase.from('spare_part_suppliers').insert({ name }).select('name').single();
+    const { data, error } = await supabase.from('part_suppliers').insert({ name }).select('name').single();
     if (error) throw error;
     return data.name;
   },
   async removePartSupplier(name: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getPartSuppliers();
-      const filtered = list.filter(s => s !== name);
+      const filtered = list.filter((n: string) => n !== name);
       localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(filtered));
       return;
     }
-    const { error } = await supabase.from('spare_part_suppliers').delete().eq('name', name);
+    const { error } = await supabase.from('part_suppliers').delete().eq('name', name);
     if (error) throw error;
   },
   async updatePartSupplier(oldName: string, newName: string): Promise<void> {
     if (import.meta.env.VITE_USE_MOCK === 'true') {
       const list = await this.getPartSuppliers();
-      const index = list.indexOf(oldName);
-      if (index !== -1) {
-        list[index] = newName;
-        localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(list));
-      }
+      const updated = list.map((n: string) => n === oldName ? newName : n);
+      localStorage.setItem('v2_cmms_part_suppliers', JSON.stringify(updated));
       return;
     }
     // 1. Update config table
-    const { error: configError } = await supabase.from('spare_part_suppliers').update({ name: newName }).eq('name', oldName);
+    const { error: configError } = await supabase.from('part_suppliers').update({ name: newName }).eq('name', oldName);
     if (configError) throw configError;
 
     // 2. Cascade to spare_parts

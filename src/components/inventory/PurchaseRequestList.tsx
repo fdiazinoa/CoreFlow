@@ -66,7 +66,7 @@ export const PurchaseRequestList: React.FC = () => {
             await inventoryService.processPurchaseReception(selectedRequest.id, [{ partId, qtyReceived: receivingQty }]);
             
             // Reload requests to get updated status and quantities
-            const res = await inventoryService.getAllPurchaseRequests(currentPage, 25, { searchTerm });
+            const res = await inventoryService.getAllPurchaseRequests({ page: currentPage, pageSize: 25 }, { searchTerm });
             setRequests(res.data);
             
             // Update selected request
@@ -88,9 +88,9 @@ export const PurchaseRequestList: React.FC = () => {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const res = await inventoryService.getAllPurchaseRequests(currentPage, 25, { searchTerm });
+            const res = await inventoryService.getAllPurchaseRequests({ page: currentPage, pageSize: 25 }, { searchTerm });
             setRequests(res.data);
-            setTotalItems(res.total);
+            setTotalItems(res.count || 0);
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {

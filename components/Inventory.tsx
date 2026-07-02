@@ -25,8 +25,14 @@ export const Inventory: React.FC<any> = () => {
     }
   }, [activeTab, selectedRequest]);
 
-  const handleSelectRequest = (request: PartsRequest) => {
-    setSelectedRequest(request);
+  const handleSelectRequest = async (request: PartsRequest) => {
+    try {
+      const fullRequest = await inventoryService.getRequestById(request.id);
+      setSelectedRequest(fullRequest);
+    } catch (error) {
+      console.error('Error fetching request details:', error);
+      setSelectedRequest(request);
+    }
   };
 
   const handleBackToRequestList = () => {

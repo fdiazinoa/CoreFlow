@@ -288,9 +288,10 @@ export const FloatingHelpDesk: React.FC = () => {
     
     const { data, error } = await supabase
       .from('helpdesk_tickets')
-      .select('*')
+      .select('id, subject, public_code, status, category, created_at, created_by, updated_at')
       .eq('created_by', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(0, 49);
       
     if (!error && data) {
       setTickets(data as HelpDeskTicket[]);

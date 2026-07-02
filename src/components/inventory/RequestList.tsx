@@ -46,7 +46,7 @@ export const RequestList: React.FC<RequestListProps> = ({ onSelectRequest }) => 
 
     useEffect(() => {
         loadData();
-    }, [pagination.page]);
+    }, [pagination.page, pagination.limit, searchTerm, statusFilter, priorityFilter, startDate, endDate]);
 
     useEffect(() => {
         UserSupabaseService.getUsers()
@@ -58,12 +58,21 @@ export const RequestList: React.FC<RequestListProps> = ({ onSelectRequest }) => 
         setLoading(true);
         try {
             const [reqs, partsData] = await Promise.all([
-                inventoryService.getAllRequests(),
+                inventoryService.getAllRequests(
+                    { page: pagination.page, pageSize: pagination.limit },
+                    { 
+                        searchTerm: searchTerm || undefined,
+                        status: statusFilter === 'all' ? undefined : statusFilter,
+                        priority: priorityFilter === 'all' ? undefined : priorityFilter,
+                        startDate: startDate || undefined,
+                        endDate: endDate || undefined
+                    }
+                ),
                 inventoryService.getAllParts(1, 1000) // Fetch many for lookup
             ]);
-            setRequests(reqs);
+            setRequests(reqs.data);
             setParts(partsData.data);
-            setPagination(prev => ({ ...prev, total: reqs.length }));
+            setPagination(prev => ({ ...prev, total: reqs.count || 0 }));
         } catch (error) {
             console.error("Error loading requests:", error);
         } finally {
@@ -71,28 +80,8 @@ export const RequestList: React.FC<RequestListProps> = ({ onSelectRequest }) => 
         }
     };
 
-    // Filter Logic
-    const filteredRequests = requests.filter(req => {
-        const matchesSearch =
-            req.requestNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            req.technicianId.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesStatus = statusFilter === 'all' ? true : req.status === statusFilter;
-
-        const matchesPriority = priorityFilter === 'all' ? true : req.priority === priorityFilter;
-
-        const reqDate = new Date(req.createdDate);
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-
-        // Reset hours for accurate date comparison
-        if (start) start.setHours(0, 0, 0, 0);
-        if (end) end.setHours(23, 59, 59, 999);
-
-        const matchesDate = (!start || reqDate >= start) && (!end || reqDate <= end);
-
-        return matchesSearch && matchesStatus && matchesPriority && matchesDate;
-    });
+    // Filter Logic is now handled on the server
+    const filteredRequests = requests;
 
     const generatePDF = () => {
         const doc = new jsPDF();
