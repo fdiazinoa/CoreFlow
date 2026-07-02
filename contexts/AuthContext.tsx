@@ -52,6 +52,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return null;
     }
 
+    let status = data.status;
+    if (status === 'INVITED') {
+      console.log(`User ${userId} logging in for the first time. Activating account...`);
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ status: 'ACTIVE' })
+        .eq('id', userId);
+
+      if (updateError) {
+        console.error("Error updating user status to ACTIVE:", updateError);
+      } else {
+        status = 'ACTIVE';
+      }
+    }
+
     return {
       id: data.id,
       email: data.email,
@@ -59,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       role: data.role_id || data.role, // Source of truth: role_id from new schema
       company_code: data.company_code,
       job_title: data.job_title,
-      status: data.status,
+      status: status,
       specialties: data.specialties || [],
       tenant_id: data.tenant_id,
       avatar_url: data.avatar_url,
@@ -76,7 +91,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const stored = localStorage.getItem('coreflow_mock_session');
         if (stored && mounted) {
           try {
-            setUser(JSON.parse(stored));
+            const parsed = JSON.parse(stored);
+            if (parsed.status === 'INVITED') {
+              parsed.status = 'ACTIVE';
+              localStorage.setItem('coreflow_mock_session', JSON.stringify(parsed));
+              
+              // Also update in the mock users list
+              const mockUsersRaw = localStorage.getItem('coreflow_mock_users');
+              if (mockUsersRaw) {
+                const mockUsers = JSON.parse(mockUsersRaw);
+                const idx = mockUsers.findIndex((u: any) => u.id === parsed.id);
+                if (idx !== -1) {
+                  mockUsers[idx].status = 'ACTIVE';
+                  localStorage.setItem('coreflow_mock_users', JSON.stringify(mockUsers));
+                }
+              }
+            }
+            setUser(parsed);
           } catch (e) {
             console.error("Failed to parse mock session", e);
           }
@@ -211,16 +242,45 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Do not set global loading here. Let the UI handle its own loading state.
     // setIsLoading(true); 
     if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const mockUsersRaw = localStorage.getItem('coreflow_mock_users');
+      let status = 'ACTIVE';
+      let fullName = email.split('@')[0].toUpperCase();
+      let role = UserRole.ADMIN_SOLICITANTE;
+      let companyCode = 'COMP-1';
+      let jobTitle = 'Administrator';
+      let specialties: string[] = [];
+      let id = 'mock-user-id-' + email.replace(/[^a-zA-Z0-9]/g, '');
+
+      if (mockUsersRaw) {
+        const mockUsers = JSON.parse(mockUsersRaw);
+        const existingMockUser = mockUsers.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+        if (existingMockUser) {
+          id = existingMockUser.id;
+          fullName = existingMockUser.full_name;
+          role = existingMockUser.role;
+          companyCode = existingMockUser.company_code || 'COMP-1';
+          jobTitle = existingMockUser.job_title || 'Technician';
+          specialties = existingMockUser.specialties || [];
+          if (existingMockUser.status === 'INVITED') {
+            status = 'ACTIVE';
+            existingMockUser.status = 'ACTIVE';
+            localStorage.setItem('coreflow_mock_users', JSON.stringify(mockUsers));
+          } else {
+            status = existingMockUser.status;
+          }
+        }
+      }
+
       const mockUser: UserProfile = {
-        id: 'mock-user-id-' + email.replace(/[^a-zA-Z0-9]/g, ''),
-        email: email,
-        full_name: email.split('@')[0].toUpperCase(),
-        role: UserRole.ADMIN_SOLICITANTE, // Default to admin for full functionality
+        id,
+        email,
+        full_name: fullName,
+        role,
         tenant_id: 'default-tenant',
-        status: 'ACTIVE',
-        job_title: 'Administrator',
-        specialties: [],
-        company_code: 'COMP-1'
+        status: status as any,
+        job_title: jobTitle,
+        specialties,
+        company_code: companyCode
       };
       localStorage.setItem('coreflow_mock_session', JSON.stringify(mockUser));
       setUser(mockUser);
