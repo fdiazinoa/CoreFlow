@@ -588,7 +588,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
                             </div>
                           </button>
 
-                          {hasRole([UserRole.ADMIN_SOLICITANTE]) && (
+                          {(hasRole([UserRole.ADMIN_SOLICITANTE]) || hasPermission('manage_config')) && (
                             <div className="absolute top-2 right-2">
                               {machineToRemove === m.id ? (
                                 <div className="flex gap-1 bg-industrial-800 p-1 rounded shadow-lg border border-industrial-600">

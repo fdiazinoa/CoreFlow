@@ -107,10 +107,12 @@ const MachineHoursPage = () => {
 
 const ConfigurationPage = () => {
   const { technicians, plantSettings, addTechnician, updateSettings, zones, addZone, updateZone, deleteZone } = useMasterStore();
-  const { hasRole } = useAuth();
+  const { hasRole, hasPermission } = useAuth();
 
-  if (!hasRole([UserRole.ADMIN_SOLICITANTE])) {
-    return <div className="h-full flex items-center justify-center bg-industrial-900 text-industrial-500 flex-col gap-4"><Shield className="w-12 h-12 text-red-900" /><span>Access Restricted: Master Data requires Admin privileges.</span></div>;
+  const canAccessConfig = hasRole([UserRole.ADMIN_SOLICITANTE]) || hasPermission('manage_config') || hasPermission('manage_users') || hasPermission('manage_roles');
+
+  if (!canAccessConfig) {
+    return <div className="h-full flex items-center justify-center bg-industrial-900 text-industrial-500 flex-col gap-4"><Shield className="w-12 h-12 text-red-900" /><span>Acceso Restringido: Se requieren permisos de Configuración.</span></div>;
   }
   return (
     <Configuration
@@ -282,7 +284,7 @@ const AppLayout = () => {
 
             <div className="pt-4 mt-4 border-t border-industrial-800">
               <SidebarItem label={t('sidebar.masterData')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></svg>}
-                active={path === '/settings'} onClick={() => navigate('/settings')} disabled={!hasRole([UserRole.ADMIN_SOLICITANTE])} />
+                active={path === '/settings'} onClick={() => navigate('/settings')} disabled={!(hasRole([UserRole.ADMIN_SOLICITANTE]) || hasPermission('manage_config') || hasPermission('manage_users') || hasPermission('manage_roles'))} />
 
             </div>
           </nav>
