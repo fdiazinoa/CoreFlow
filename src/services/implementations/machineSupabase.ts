@@ -244,7 +244,8 @@ export const MachineSupabaseService = {
       hoursLogged: log.hours_logged,
       unit: log.unit || 'h',
       operator: log.operator || 'Unknown',
-      comments: log.comments
+      comments: log.comments,
+      createdAt: log.created_at
     }));
   },
 
@@ -278,7 +279,8 @@ export const MachineSupabaseService = {
       hoursLogged: log.hours_logged,
       unit: log.unit || 'h',
       operator: log.operator || 'Unknown',
-      comments: log.comments
+      comments: log.comments,
+      createdAt: log.created_at
     }));
   },
 
@@ -324,32 +326,25 @@ export const MachineSupabaseService = {
       hoursLogged: log.hours_logged,
       unit: log.unit || 'h',
       operator: log.operator || 'Unknown',
-      comments: log.comments
+      comments: log.comments,
+      createdAt: log.created_at
     }));
 
     return { data: mappedData, total: count || 0 };
   },
 
-  async logMachineHours(log: { machineId: string, hoursLogged: number, unit: 'h' | 'km', operator: string, comments?: string }): Promise<any> {
-    // 1. Get current machine to update hours
-    const { data: machineData, error: fetchError } = await supabase
-      .from('machines')
-      .select('running_hours')
-      .eq('id', log.machineId)
-      .single();
+  async logMachineHours(log: { machineId: string, hoursLogged: number, unit: 'h' | 'km', operator: string, comments?: string, nextMaintenance?: string | null }): Promise<any> {
+    const newTotalHours = log.hoursLogged;
 
-    if (fetchError) {
-      console.error("Failed to fetch machine hours:", fetchError);
-      throw fetchError;
+    // 1. Update machine hours & next maintenance
+    const updatePayload: any = { running_hours: newTotalHours, updated_at: new Date().toISOString() };
+    if (log.nextMaintenance !== undefined) {
+      updatePayload.next_maintenance = log.nextMaintenance;
     }
 
-    const currentHours = machineData.running_hours || 0;
-    const newTotalHours = currentHours + log.hoursLogged;
-
-    // 2. Update machine hours
     const { error: updateError } = await supabase
       .from('machines')
-      .update({ running_hours: newTotalHours, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', log.machineId);
 
     if (updateError) {
@@ -383,7 +378,8 @@ export const MachineSupabaseService = {
       hoursLogged: logData.hours_logged,
       unit: logData.unit,
       operator: logData.operator,
-      comments: logData.comments
+      comments: logData.comments,
+      createdAt: logData.created_at
     };
   },
 

@@ -293,7 +293,7 @@ export const MachinesList: React.FC = () => {
         zone: zones[0],
         isIot: true,
         lastMaintenance: new Date().toISOString(),
-        nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        nextMaintenance: '',
         telemetry: { timestamp: new Date().toISOString(), temperature: 0, vibration: 0, pressure: 0, powerConsumption: 0 },
         history: [],
         ...commonUpdate
@@ -357,7 +357,7 @@ export const MachinesList: React.FC = () => {
           isIot: false,
           runningHours: 0,
           lastMaintenance: new Date().toISOString(),
-          nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          nextMaintenance: '',
           telemetry: { timestamp: new Date().toISOString(), temperature: 0, vibration: 0, pressure: 0, powerConsumption: 0 },
           history: [],
           ...commonUpdate

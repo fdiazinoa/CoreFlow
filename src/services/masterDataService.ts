@@ -43,6 +43,7 @@ export const MasterDataService = {
     unit: 'h' | 'km'; 
     operator: string; 
     comments?: string; 
+    nextMaintenance?: string | null;
   }): Promise<any> {
     return (machineService as any).logMachineHours(log);
   },

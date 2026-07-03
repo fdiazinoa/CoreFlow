@@ -22,6 +22,9 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
     const [displayReading, setDisplayReading] = useState<string>('');
     const [selectedUnit, setSelectedUnit] = useState<'h' | 'km'>('h');
     const [isLoading, setIsLoading] = useState(false);
+    const [nextMaintenanceDate, setNextMaintenanceDate] = useState<string>('');
+    const [notes, setNotes] = useState<string>('');
+    const [selectedLogForDetails, setSelectedLogForDetails] = useState<MachineHourLog | null>(null);
 
     // Filters
     const [startDate, setStartDate] = useState<string>('');
@@ -75,6 +78,12 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
         setCurrentPage(1);
     }, [selectedMachineId, startDate, endDate]);
 
+    // Reset form fields when machine is selected
+    useEffect(() => {
+        setNextMaintenanceDate('');
+        setNotes('');
+    }, [selectedMachineId]);
+
     const handleLog = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedMachine) return;
@@ -90,7 +99,9 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                 machineId: selectedMachine.id,
                 hoursLogged: currentReading,
                 unit: selectedUnit,
-                operator: user?.full_name || 'Unknown Operator'
+                operator: user?.full_name || 'Unknown Operator',
+                nextMaintenance: nextMaintenanceDate ? nextMaintenanceDate : undefined,
+                comments: notes ? notes : undefined
             });
 
             // Update history locally if it matches current filters (simplified: just prepend if no date filter or within range)
@@ -106,9 +117,14 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
 
             // Update local machine running hours immediately for UI feedback
             selectedMachine.runningHours = currentReading;
+            if (nextMaintenanceDate) {
+                selectedMachine.nextMaintenance = nextMaintenanceDate;
+            }
 
             setCurrentReading(0);
             setDisplayReading('');
+            setNextMaintenanceDate('');
+            setNotes('');
 
         } catch (error) {
             console.error(error);
@@ -166,7 +182,7 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
         const machineStr = selectedMachine ? `Máquina: ${selectedMachine.name}` : 'Todas las máquinas';
         doc.text(`${machineStr} | ${dateStr}`, 14, currentY + 8);
 
-        const tableColumn = ["Fecha", "Máquina", "Alias / Matrícula", "Lectura", "Operador"];
+        const tableColumn = ["Fecha", "Máquina", "Alias / Matrícula", "Lectura", "Operador", "Notas"];
         const tableRows: any[] = [];
 
         history.forEach(log => {
@@ -184,6 +200,7 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                 aliasPlate,
                 reading,
                 log.operator,
+                log.comments || '-',
             ];
             tableRows.push(logData);
         });
@@ -315,6 +332,33 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                             </div>
                         </div>
 
+                        <div className="space-y-1">
+                            <label className="text-xs text-industrial-400 font-bold uppercase">
+                                {t('hours.nextMaintenanceDate')}
+                            </label>
+                            <input
+                                type="date"
+                                disabled={!canRegister || !selectedMachineId}
+                                className={`w-full bg-industrial-900 border border-industrial-600 rounded p-2 text-white outline-none focus:border-emerald-500 transition-colors [color-scheme:dark] ${!canRegister || !selectedMachineId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                value={nextMaintenanceDate}
+                                onChange={(e) => setNextMaintenanceDate(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-xs text-industrial-400 font-bold uppercase">
+                                {t('hours.notes')}
+                            </label>
+                            <textarea
+                                disabled={!canRegister || !selectedMachineId}
+                                rows={3}
+                                className={`w-full bg-industrial-900 border border-industrial-600 rounded p-2 text-white outline-none focus:border-emerald-500 transition-colors resize-none ${!canRegister || !selectedMachineId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                placeholder={canRegister && selectedMachineId ? "Escriba una frase o nota..." : "Sin permiso o equipo no seleccionado"}
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                            />
+                        </div>
+
                         <button
                             type="submit"
                             disabled={isLoading || !canRegister}
@@ -402,7 +446,11 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                                     {history.map(log => {
                                         const machine = machines.find(m => m.id === log.machineId);
                                         return (
-                                            <tr key={log.id} className="hover:bg-industrial-700/30">
+                                            <tr 
+                                                key={log.id} 
+                                                className="hover:bg-industrial-700/30 cursor-pointer transition-colors"
+                                                onClick={() => setSelectedLogForDetails(log)}
+                                            >
                                                 <td className="px-6 py-3">{log.date}</td>
                                                 <td className="px-6 py-3 text-white">
                                                     {machine?.name || 'Unknown Log'}
@@ -423,16 +471,118 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                     </div>
 
                     <div className="mt-auto p-4 bg-industrial-900 border-t border-industrial-700 flex justify-end">
-                        <TablePagination
-                            totalItems={totalLogs}
-                            currentPage={currentPage}
-                            itemsPerPage={ITEMS_PER_PAGE}
-                            onPageChange={setCurrentPage}
-                            isLoading={isLoading}
-                        />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
+                                                        <TablePagination
+                                                            totalItems={totalLogs}
+                                                            currentPage={currentPage}
+                                                            itemsPerPage={ITEMS_PER_PAGE}
+                                                            onPageChange={setCurrentPage}
+                                                            isLoading={isLoading}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                
+                                            {/* Modal de Detalle de Registro */}
+                                            {selectedLogForDetails && (() => {
+                                                const machine = machines.find(m => m.id === selectedLogForDetails.machineId);
+                                                const nextMaintenance = machine?.nextMaintenance;
+                                                
+                                                // Format time from createdAt
+                                                let timeStr = '-';
+                                                if (selectedLogForDetails.createdAt) {
+                                                    try {
+                                                        const dateObj = new Date(selectedLogForDetails.createdAt);
+                                                        timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                    }
+                                                }
+                                
+                                                return (
+                                                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                                                        <div className="bg-industrial-800 border border-industrial-700 rounded-xl shadow-2xl max-w-md w-full overflow-hidden transform scale-100 transition-transform duration-300">
+                                                            {/* Modal Header */}
+                                                            <div className="p-4 border-b border-industrial-700 flex justify-between items-center bg-industrial-900/50">
+                                                                <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                                                                    <Clock className="w-5 h-5 text-industrial-accent" /> Detalle del Registro
+                                                                </h3>
+                                                                <button
+                                                                    onClick={() => setSelectedLogForDetails(null)}
+                                                                    className="text-industrial-400 hover:text-white transition-colors"
+                                                                >
+                                                                    <X size={20} />
+                                                                </button>
+                                                            </div>
+                                                            
+                                                            {/* Modal Content */}
+                                                            <div className="p-6 space-y-4 text-sm text-industrial-300">
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div className="space-y-1">
+                                                                        <span className="text-xs text-industrial-500 font-bold uppercase block">Fecha del Registro</span>
+                                                                        <span className="text-white font-mono">{selectedLogForDetails.date}</span>
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <span className="text-xs text-industrial-500 font-bold uppercase block">Hora de la Lectura</span>
+                                                                        <span className="text-white font-mono">{timeStr}</span>
+                                                                    </div>
+                                                                </div>
+                                
+                                                                <div className="border-t border-industrial-700/50 pt-3 space-y-3">
+                                                                    <div>
+                                                                        <span className="text-xs text-industrial-500 font-bold uppercase block">Máquina / Equipo</span>
+                                                                        <span className="text-white font-medium">{machine?.name || 'Equipo no encontrado'}</span>
+                                                                    </div>
+                                
+                                                                    <div>
+                                                                        <span className="text-xs text-industrial-500 font-bold uppercase block">Alias / Matrícula</span>
+                                                                        <span className="text-white italic text-xs">
+                                                                            {machine?.alias && machine?.plate ? `${machine.alias} (${machine.plate})` : (machine?.alias || machine?.plate || '-')}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                
+                                                                <div className="border-t border-industrial-700/50 pt-3 grid grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <span className="text-xs text-industrial-500 font-bold uppercase block">Lectura</span>
+                                                                        <span className="text-emerald-400 font-mono font-bold text-base">
+                                                                            {new Intl.NumberFormat('en-US').format(selectedLogForDetails.hoursLogged)} {selectedLogForDetails.unit}
+                                                                        </span>
+                                                                    </div>
+                                
+                                                                    <div>
+                                                                        <span className="text-xs text-industrial-500 font-bold uppercase block">Fecha Próximo Mantenimiento</span>
+                                                                        <span className="text-white font-mono">
+                                                                            {nextMaintenance ? nextMaintenance.split('T')[0] : '-'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                
+                                                                <div className="border-t border-industrial-700/50 pt-3 space-y-1">
+                                                                    <span className="text-xs text-industrial-500 font-bold uppercase block">Operador</span>
+                                                                    <span className="text-white">{selectedLogForDetails.operator}</span>
+                                                                </div>
+                                
+                                                                <div className="border-t border-industrial-700/50 pt-3 space-y-1">
+                                                                    <span className="text-xs text-industrial-500 font-bold uppercase block">Notas</span>
+                                                                    <div className="bg-industrial-900 border border-industrial-700/80 rounded p-3 text-white text-xs whitespace-pre-wrap min-h-[60px] max-h-40 overflow-y-auto">
+                                                                        {selectedLogForDetails.comments || <span className="text-industrial-500 italic">Sin notas</span>}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                
+                                                            {/* Modal Footer */}
+                                                            <div className="p-4 border-t border-industrial-700 bg-industrial-900/30 flex justify-end">
+                                                                <button
+                                                                    onClick={() => setSelectedLogForDetails(null)}
+                                                                    className="bg-industrial-700 hover:bg-industrial-600 text-white px-4 py-2 rounded font-bold text-xs transition-colors"
+                                                                >
+                                                                    Cerrar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    );
+                                };

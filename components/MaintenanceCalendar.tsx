@@ -18,13 +18,43 @@ export const MaintenanceCalendar: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [activeView, setActiveView] = useState<'month' | 'week' | 'day'>('month');
   
-  // Filter States: R-MANT-02 (Preventive) and R-MANT-05 (Corrective)
-  // Default to showing both
+  // Filter States: R-MANT-02 (Preventive), R-MANT-05 (Corrective), and Next Maintenances
+  // Default to showing all
   const [showMant02, setShowMant02] = useState<boolean>(true);
   const [showMant05, setShowMant05] = useState<boolean>(true);
+  const [showNextMaint, setShowNextMaint] = useState<boolean>(true);
+
+  // Toggle handlers ensuring at least one filter remains active
+  const handleToggleMant02 = () => {
+    if (showMant02 && !showMant05 && !showNextMaint) return;
+    setShowMant02(!showMant02);
+  };
+
+  const handleToggleMant05 = () => {
+    if (showMant05 && !showMant02 && !showNextMaint) return;
+    setShowMant05(!showMant05);
+  };
+
+  const handleToggleNextMaint = () => {
+    if (showNextMaint && !showMant02 && !showMant05) return;
+    setShowNextMaint(!showNextMaint);
+  };
+
+  // Calendar item interface to unify orders and next maintenance events
+  interface CalendarItem {
+    id: string;
+    date: string;
+    type: 'R-MANT-02' | 'R-MANT-05' | 'NEXT_MAINTENANCE';
+    machineId: string;
+    machine?: Machine;
+    title: string;
+    line: string;
+    description?: string;
+    order?: WorkOrder;
+  }
 
   // Hover Popover State
-  const [hoveredOrder, setHoveredOrder] = useState<WorkOrder | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<CalendarItem | null>(null);
   const [hoveredMachine, setHoveredMachine] = useState<Machine | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -72,14 +102,53 @@ export const MaintenanceCalendar: React.FC = () => {
     return `${y}-${m}-${d}` === cleanDate;
   };
 
-  // Filters matching
-  const getFilteredOrders = () => {
-    return calendarOrders.filter((order) => {
-      if (order.formType === 'R-MANT-02' && !showMant02) return false;
-      if (order.formType === 'R-MANT-05' && !showMant05) return false;
-      // Only show R-MANT-02 and R-MANT-05 as per requirements
-      return order.formType === 'R-MANT-02' || order.formType === 'R-MANT-05';
-    });
+  // Selector to get unified items matching active filters
+  const getFilteredItems = (): CalendarItem[] => {
+    const items: CalendarItem[] = [];
+
+    // Add work orders if active
+    if (showMant02 || showMant05) {
+      calendarOrders.forEach((order) => {
+        if (order.formType === 'R-MANT-02' && !showMant02) return;
+        if (order.formType === 'R-MANT-05' && !showMant05) return;
+        if (order.formType !== 'R-MANT-02' && order.formType !== 'R-MANT-05') return;
+
+        const machine = machines.find((m) => m.id === order.machineId);
+        items.push({
+          id: order.id,
+          date: order.startDate || order.createdDate,
+          type: order.formType,
+          machineId: order.machineId,
+          machine,
+          title: machine?.alias || machine?.model || machine?.name || 'Eq',
+          line: getMachineLine(machine?.zone),
+          description: order.description,
+          order,
+        });
+      });
+    }
+
+    // Add next maintenance events if active
+    if (showNextMaint) {
+      machines.forEach((machine) => {
+        if (machine.nextMaintenance && machine.isActive !== false) {
+          items.push({
+            id: `maint-${machine.id}-${machine.nextMaintenance}`, // Ensure unique key across calendar
+            date: machine.nextMaintenance,
+            type: 'NEXT_MAINTENANCE',
+            machineId: machine.id,
+            machine,
+            title: machine.alias || machine.model || machine.name || 'Eq',
+            line: getMachineLine(machine.zone),
+            description: language === 'es'
+              ? 'Próximo mantenimiento estimado'
+              : 'Estimated next maintenance',
+          });
+        }
+      });
+    }
+
+    return items;
   };
 
   // Helper to extract machine line/zone
@@ -92,12 +161,12 @@ export const MaintenanceCalendar: React.FC = () => {
   };
 
   // Handlers for Hover Popover
-  const handleMouseEnter = (e: React.MouseEvent, order: WorkOrder) => {
-    const machine = machines.find((m) => m.id === order.machineId);
+  const handleMouseEnter = (e: React.MouseEvent, item: CalendarItem) => {
+    const machine = item.machine || machines.find((m) => m.id === item.machineId);
     const rect = e.currentTarget.getBoundingClientRect();
     
     // Position fixed tooltip above the card, centered horizontally
-    setHoveredOrder(order);
+    setHoveredItem(item);
     setHoveredMachine(machine || null);
     setTooltipPos({
       x: rect.left + window.scrollX + rect.width / 2,
@@ -106,7 +175,7 @@ export const MaintenanceCalendar: React.FC = () => {
   };
 
   const handleMouseLeave = () => {
-    setHoveredOrder(null);
+    setHoveredItem(null);
     setHoveredMachine(null);
   };
 
@@ -152,10 +221,12 @@ export const MaintenanceCalendar: React.FC = () => {
 
   // Get dynamic main title depending on filter
   const getDynamicTitle = () => {
-    if (showMant02 && !showMant05) {
+    if (showMant02 && !showMant05 && !showNextMaint) {
       return language === 'es' ? 'Mantenimientos R-MANT-02' : 'R-MANT-02 Maintenance';
-    } else if (!showMant02 && showMant05) {
+    } else if (!showMant02 && showMant05 && !showNextMaint) {
       return language === 'es' ? 'Mantenimientos R-MANT-05' : 'R-MANT-05 Maintenance';
+    } else if (!showMant02 && !showMant05 && showNextMaint) {
+      return language === 'es' ? 'Próximos Mantenimientos' : 'Upcoming Maintenance';
     } else {
       return language === 'es' ? 'Calendario de Mantenimiento' : 'Maintenance Calendar';
     }
@@ -197,7 +268,7 @@ export const MaintenanceCalendar: React.FC = () => {
     const weekdaysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const weekdaysEs = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const weekdays = language === 'es' ? weekdaysEs : weekdaysEn;
-    const filteredOrders = getFilteredOrders();
+    const filteredItems = getFilteredItems();
 
     return (
       <div className="flex-1 flex flex-col overflow-hidden min-h-[500px]">
@@ -211,7 +282,7 @@ export const MaintenanceCalendar: React.FC = () => {
         {/* Month grid */}
         <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-[1px] bg-industrial-800/40 border border-industrial-800 rounded-b-lg overflow-hidden">
           {days.map((dayObj, index) => {
-            const dayOrders = filteredOrders.filter((o) => isSameDay(dayObj.date, o.startDate || o.createdDate));
+            const dayItems = filteredItems.filter((item) => isSameDay(dayObj.date, item.date));
             const isToday = isSameDay(new Date(), formatDateString(dayObj.date));
             
             return (
@@ -234,34 +305,41 @@ export const MaintenanceCalendar: React.FC = () => {
                       {dayObj.dayNumber}
                     </span>
                   )}
-                  {dayOrders.length > 0 && (
+                  {dayItems.length > 0 && (
                     <span className="text-[10px] bg-industrial-800 text-industrial-400 font-mono px-1.5 py-0.2 rounded">
-                      {dayOrders.length}
+                      {dayItems.length}
                     </span>
                   )}
                 </div>
                 
-                {/* Orders container */}
+                {/* Items container */}
                 <div className="flex-1 overflow-y-auto space-y-1 pr-0.5 custom-scrollbar">
-                  {dayOrders.map((order) => {
-                    const machine = machines.find((m) => m.id === order.machineId);
-                    const isMant02 = order.formType === 'R-MANT-02';
-                    const machineName = machine?.alias || machine?.model || machine?.name || 'Eq';
-                    const machineLine = getMachineLine(machine?.zone);
+                  {dayItems.map((item) => {
+                    const isMant02 = item.type === 'R-MANT-02';
+                    const isMant05 = item.type === 'R-MANT-05';
+                    const isNextMaint = item.type === 'NEXT_MAINTENANCE';
                     
                     return (
                       <div
-                        key={order.id}
-                        onMouseEnter={(e) => handleMouseEnter(e, order)}
+                        key={item.id}
+                        onMouseEnter={(e) => handleMouseEnter(e, item)}
                         onMouseLeave={handleMouseLeave}
-                        onClick={() => navigate(`/orders/${order.id}`, { state: { type: order.formType } })}
+                        onClick={() => {
+                          if (isNextMaint) {
+                            navigate('/orders/new', { state: { machineId: item.machineId } });
+                          } else {
+                            navigate(`/orders/${item.id}`, { state: { type: item.type } });
+                          }
+                        }}
                         className={`cursor-pointer px-2 py-1 rounded text-[11px] font-medium transition-all duration-150 truncate block select-none border ${
                           isMant02
                             ? 'bg-blue-600/10 text-blue-300 border-blue-500/20 hover:bg-blue-600/20 hover:border-blue-500/40'
-                            : 'bg-amber-600/10 text-amber-300 border-amber-500/20 hover:bg-amber-600/20 hover:border-amber-500/40'
+                            : isMant05
+                            ? 'bg-amber-600/10 text-amber-300 border-amber-500/20 hover:bg-amber-600/20 hover:border-amber-500/40'
+                            : 'bg-emerald-600/10 text-emerald-300 border-emerald-500/20 hover:bg-emerald-600/20 hover:border-emerald-500/40'
                         }`}
                       >
-                        {machineName} - {machineLine}
+                        {isNextMaint ? '🔧 ' : ''}{item.title} - {item.line}
                       </div>
                     );
                   })}
@@ -298,12 +376,12 @@ export const MaintenanceCalendar: React.FC = () => {
     const weekdaysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const weekdaysEs = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
     const weekdays = language === 'es' ? weekdaysEs : weekdaysEn;
-    const filteredOrders = getFilteredOrders();
+    const filteredItems = getFilteredItems();
 
     return (
       <div className="flex-1 grid grid-cols-7 gap-3 overflow-hidden min-h-[400px]">
         {weekDays.map((day, idx) => {
-          const dayOrders = filteredOrders.filter((o) => isSameDay(day, o.startDate || o.createdDate));
+          const dayItems = filteredItems.filter((item) => isSameDay(day, item.date));
           const isToday = isSameDay(new Date(), formatDateString(day));
           
           return (
@@ -323,45 +401,62 @@ export const MaintenanceCalendar: React.FC = () => {
                 </p>
               </div>
               
-              {/* Order Cards list */}
+              {/* Cards list */}
               <div className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 custom-scrollbar">
-                {dayOrders.length === 0 ? (
+                {dayItems.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-center p-2">
                     <p className="text-xs text-industrial-600 italic">No events</p>
                   </div>
                 ) : (
-                  dayOrders.map((order) => {
-                    const machine = machines.find((m) => m.id === order.machineId);
-                    const isMant02 = order.formType === 'R-MANT-02';
-                    const machineName = machine?.alias || machine?.model || machine?.name || 'Eq';
-                    const machineLine = getMachineLine(machine?.zone);
+                  dayItems.map((item) => {
+                    const isMant02 = item.type === 'R-MANT-02';
+                    const isMant05 = item.type === 'R-MANT-05';
+                    const isNextMaint = item.type === 'NEXT_MAINTENANCE';
                     
                     return (
                       <div
-                        key={order.id}
-                        onMouseEnter={(e) => handleMouseEnter(e, order)}
+                        key={item.id}
+                        onMouseEnter={(e) => handleMouseEnter(e, item)}
                         onMouseLeave={handleMouseLeave}
-                        onClick={() => navigate(`/orders/${order.id}`, { state: { type: order.formType } })}
+                        onClick={() => {
+                          if (isNextMaint) {
+                            navigate('/orders/new', { state: { machineId: item.machineId } });
+                          } else {
+                            navigate(`/orders/${item.id}`, { state: { type: item.type } });
+                          }
+                        }}
                         className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-all duration-200 shadow-md ${
                           isMant02
                             ? 'bg-blue-600/10 text-blue-200 border-blue-500/30 hover:border-blue-400/50 hover:bg-blue-600/20'
-                            : 'bg-amber-600/10 text-amber-200 border-amber-500/30 hover:border-amber-400/50 hover:bg-amber-600/20'
+                            : isMant05
+                            ? 'bg-amber-600/10 text-amber-200 border-amber-500/30 hover:border-amber-400/50 hover:bg-amber-600/20'
+                            : 'bg-emerald-600/10 text-emerald-200 border-emerald-500/30 hover:border-emerald-400/50 hover:bg-emerald-600/20'
                         }`}
                       >
                         <div className="flex justify-between items-center mb-1">
                           <span className="font-bold uppercase tracking-wider text-[10px]">
-                            {isMant02 ? 'R-MANT-02' : 'R-MANT-05'}
+                            {isNextMaint
+                              ? (language === 'es' ? 'PRÓX. MANT.' : 'UPCOMING MANT.')
+                              : item.type}
                           </span>
                           <span className="font-mono text-[10px] text-industrial-400">
-                            {order.displayId || `#${order.id.substring(0, 4)}`}
+                            {isNextMaint
+                              ? (language === 'es' ? 'Programado' : 'Scheduled')
+                              : (item.order?.displayId || `#${item.id.substring(0, 4)}`)}
                           </span>
                         </div>
-                        <h5 className="font-bold text-white leading-snug truncate mt-1.5" title={machine?.name}>
-                          {machineName}
+                        <h5 className="font-bold text-white leading-snug truncate mt-1.5" title={item.machine?.name}>
+                          {item.title}
                         </h5>
                         <p className="text-industrial-400 text-[11px] mt-1 flex justify-between items-center">
-                          <span>{machineLine}</span>
-                          {order.interval && <span className="italic">{order.interval}</span>}
+                          <span>{item.line}</span>
+                          {isNextMaint ? (
+                            <span className="italic text-emerald-400 font-semibold">
+                              {language === 'es' ? 'Estimado' : 'Est.'}
+                            </span>
+                          ) : (
+                            item.order?.interval && <span className="italic">{item.order.interval}</span>
+                          )}
                         </p>
                       </div>
                     );
@@ -377,80 +472,107 @@ export const MaintenanceCalendar: React.FC = () => {
 
   // --- DAY VIEW LOGIC ---
   const renderDayView = () => {
-    const dayOrders = getFilteredOrders().filter((o) => isSameDay(currentDate, o.startDate || o.createdDate));
+    const dayItems = getFilteredItems().filter((item) => isSameDay(currentDate, item.date));
     
     return (
       <div className="flex-1 bg-industrial-900/30 rounded-xl border border-industrial-800 p-6 overflow-y-auto min-h-[350px]">
         <h4 className="text-xs font-bold text-industrial-400 uppercase tracking-widest border-b border-industrial-800 pb-3 mb-4 flex justify-between items-center">
-          <span>{language === 'es' ? 'ÓRDENES DE TRABAJO REGISTRADAS' : 'REGISTERED WORK ORDERS'}</span>
+          <span>{language === 'es' ? 'REGISTROS Y MANTENIMIENTOS' : 'LOGS & MAINTENANCE'}</span>
           <span className="bg-industrial-800 px-2 py-0.5 rounded text-industrial-300 font-mono">
-            {dayOrders.length}
+            {dayItems.length}
           </span>
         </h4>
         
-        {dayOrders.length === 0 ? (
+        {dayItems.length === 0 ? (
           <div className="h-48 flex flex-col items-center justify-center text-center">
             <p className="text-sm text-industrial-500 italic">
               {language === 'es'
-                ? 'No hay mantenimientos programados para este día.'
-                : 'No maintenance scheduled for this day.'}
+                ? 'No hay eventos programados para este día.'
+                : 'No scheduled events for this day.'}
             </p>
           </div>
         ) : (
           <div className="space-y-4 max-w-3xl">
-            {dayOrders.map((order) => {
-              const machine = machines.find((m) => m.id === order.machineId);
-              const isMant02 = order.formType === 'R-MANT-02';
+            {dayItems.map((item) => {
+              const isMant02 = item.type === 'R-MANT-02';
+              const isMant05 = item.type === 'R-MANT-05';
+              const isNextMaint = item.type === 'NEXT_MAINTENANCE';
               
               return (
                 <div
-                  key={order.id}
-                  onMouseEnter={(e) => handleMouseEnter(e, order)}
+                  key={item.id}
+                  onMouseEnter={(e) => handleMouseEnter(e, item)}
                   onMouseLeave={handleMouseLeave}
-                  onClick={() => navigate(`/orders/${order.id}`, { state: { type: order.formType } })}
+                  onClick={() => {
+                    if (isNextMaint) {
+                      navigate('/orders/new', { state: { machineId: item.machineId } });
+                    } else {
+                      navigate(`/orders/${item.id}`, { state: { type: item.type } });
+                    }
+                  }}
                   className={`cursor-pointer p-4 rounded-xl border flex justify-between items-start gap-4 transition-all duration-200 hover:shadow-lg hover:border-industrial-500 ${
                     isMant02
                       ? 'bg-blue-600/10 text-blue-200 border-blue-500/20'
-                      : 'bg-amber-600/10 text-amber-200 border-amber-500/20'
+                      : isMant05
+                      ? 'bg-amber-600/10 text-amber-200 border-amber-500/20'
+                      : 'bg-emerald-600/10 text-emerald-200 border-emerald-500/20'
                   }`}
                 >
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-3">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                        isMant02 ? 'bg-blue-600 text-white border-blue-400' : 'bg-amber-600 text-white border-amber-400'
+                        isMant02 ? 'bg-blue-600 text-white border-blue-400' :
+                        isMant05 ? 'bg-amber-600 text-white border-amber-400' :
+                        'bg-emerald-600 text-white border-emerald-400'
                       }`}>
-                        {order.formType}
+                        {isNextMaint
+                          ? (language === 'es' ? 'PRÓXIMO MANTENIMIENTO' : 'NEXT MAINTENANCE')
+                          : item.type}
                       </span>
-                      <span className="text-xs text-white font-bold font-mono">
-                        {order.displayId || order.id}
-                      </span>
+                      {!isNextMaint && (
+                        <span className="text-xs text-white font-bold font-mono">
+                          {item.order?.displayId || item.id}
+                        </span>
+                      )}
                     </div>
                     
                     <h5 className="text-base font-bold text-white mt-1">
-                      {machine?.name || 'Eq'} - {machine?.model || 'N/A'}
+                      {item.machine?.name || 'Eq'} - {item.machine?.model || 'N/A'}
                     </h5>
                     
                     <p className="text-sm text-industrial-300 leading-snug">
-                      {order.description || 'Sin descripción'}
+                      {isNextMaint
+                        ? (language === 'es'
+                            ? `Fecha programada de próximo mantenimiento registrado en Registro de Uso para el equipo ${item.machine?.name || ''}.`
+                            : `Scheduled next maintenance date registered in Usage Log for equipment ${item.machine?.name || ''}.`)
+                        : (item.order?.description || 'Sin descripción')}
                     </p>
                     
                     <div className="flex gap-4 text-xs text-industrial-400 mt-2 font-medium">
-                      <span>Línea: <strong className="text-white">{getMachineLine(machine?.zone)}</strong></span>
-                      {order.interval && (
-                        <span>Intervalo: <strong className="text-white">{order.interval}</strong></span>
+                      <span>Línea: <strong className="text-white">{item.line}</strong></span>
+                      {isNextMaint ? (
+                        <span>Lectura actual: <strong className="text-white">{(item.machine?.runningHours || 0).toLocaleString('en-US')} h</strong></span>
+                      ) : (
+                        item.order?.interval && (
+                          <span>Intervalo: <strong className="text-white">{item.order.interval}</strong></span>
+                        )
                       )}
                     </div>
                   </div>
                   
                   <div className="text-right flex flex-col justify-between h-full min-h-[60px] text-xs">
                     <span className="bg-industrial-800 text-industrial-300 px-2 py-0.5 rounded border border-industrial-700 uppercase font-bold tracking-wide">
-                      {order.currentStage === 'CLOSED' ? 'CERRADO' :
-                       order.currentStage === 'HANDOVER' ? 'SUPERVISIÓN' :
-                       order.currentStage === 'EXECUTION' ? 'EJECUCIÓN' : 'SOLICITUD'}
+                      {isNextMaint
+                        ? (language === 'es' ? 'PROGRAMADO' : 'SCHEDULED')
+                        : (item.order?.currentStage === 'CLOSED' ? 'CERRADO' :
+                           item.order?.currentStage === 'HANDOVER' ? 'SUPERVISIÓN' :
+                           item.order?.currentStage === 'EXECUTION' ? 'EJECUCIÓN' : 'SOLICITUD')}
                     </span>
-                    <span className="text-industrial-500 font-mono mt-auto block">
-                      {order.startTime && order.endTime ? `${order.startTime} - ${order.endTime}` : ''}
-                    </span>
+                    {!isNextMaint && (
+                      <span className="text-industrial-500 font-mono mt-auto block">
+                        {item.order?.startTime && item.order?.endTime ? `${item.order.startTime} - ${item.order.endTime}` : ''}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -538,18 +660,10 @@ export const MaintenanceCalendar: React.FC = () => {
 
           <div className="w-[1px] h-6 bg-industrial-800 hidden md:block mx-1"></div>
 
-          {/* Type Filters (R-MANT-02 / R-MANT-05) */}
-          <div className="flex items-center gap-2">
+          {/* Type Filters (R-MANT-02 / R-MANT-05 / NEXT_MAINTENANCE) */}
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => {
-                // Do not allow both filters to be false (at least one must be active)
-                if (showMant02 && !showMant05) {
-                  setShowMant05(true);
-                  setShowMant02(false);
-                } else {
-                  setShowMant02(!showMant02);
-                }
-              }}
+              onClick={handleToggleMant02}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 flex items-center gap-2 ${
                 showMant02
                   ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 ring-1 ring-blue-500/25 shadow-lg'
@@ -560,14 +674,7 @@ export const MaintenanceCalendar: React.FC = () => {
               R-MANT-02
             </button>
             <button
-              onClick={() => {
-                if (showMant05 && !showMant02) {
-                  setShowMant02(true);
-                  setShowMant05(false);
-                } else {
-                  setShowMant05(!showMant05);
-                }
-              }}
+              onClick={handleToggleMant05}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 flex items-center gap-2 ${
                 showMant05
                   ? 'bg-amber-600/20 text-amber-300 border-amber-500/40 ring-1 ring-amber-500/25 shadow-lg'
@@ -576,6 +683,17 @@ export const MaintenanceCalendar: React.FC = () => {
             >
               <span className={`w-2 h-2 rounded-full ${showMant05 ? 'bg-amber-400 animate-pulse' : 'bg-industrial-600'}`}></span>
               R-MANT-05
+            </button>
+            <button
+              onClick={handleToggleNextMaint}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 flex items-center gap-2 ${
+                showNextMaint
+                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 ring-1 ring-emerald-500/25 shadow-lg'
+                  : 'bg-industrial-950/20 text-industrial-500 border-industrial-800 hover:border-industrial-700'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${showNextMaint ? 'bg-emerald-400 animate-pulse' : 'bg-industrial-600'}`}></span>
+              {language === 'es' ? 'Próximos Mantenimientos' : 'Upcoming Maintenance'}
             </button>
           </div>
         </div>
@@ -638,7 +756,7 @@ export const MaintenanceCalendar: React.FC = () => {
       </div>
 
       {/* Floating Hover Popover Tooltip */}
-      {hoveredOrder && (
+      {hoveredItem && (
         <div
           className="fixed z-[9999] bg-white border border-slate-200 text-slate-800 rounded-xl p-4 shadow-2xl w-72 pointer-events-none transition-all duration-100 ease-out"
           style={{
@@ -654,7 +772,9 @@ export const MaintenanceCalendar: React.FC = () => {
                 {hoveredMachine?.name || 'Sin Nombre'}
               </h4>
               <p className="text-xs font-semibold text-slate-500 mt-1">
-                {hoveredOrder.interval || 'Sin Intervalo'}
+                {hoveredItem.type === 'NEXT_MAINTENANCE'
+                  ? (language === 'es' ? 'Próximo Mantenimiento' : 'Next Maintenance')
+                  : (hoveredItem.order?.interval || 'Sin Intervalo')}
               </p>
             </div>
 
@@ -662,8 +782,8 @@ export const MaintenanceCalendar: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
               <div>
                 <span className="block text-[10px] text-slate-400 font-normal normal-case">Línea</span>
-                <span className="text-slate-800 truncate block" title={getMachineLine(hoveredMachine?.zone)}>
-                  {getMachineLine(hoveredMachine?.zone)}
+                <span className="text-slate-800 truncate block" title={hoveredItem.line}>
+                  {hoveredItem.line}
                 </span>
               </div>
               <div>
@@ -673,9 +793,13 @@ export const MaintenanceCalendar: React.FC = () => {
                 </span>
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 font-normal normal-case">Orden</span>
-                <span className="text-slate-800 truncate block font-mono" title={hoveredOrder.displayId || hoveredOrder.id}>
-                  {hoveredOrder.displayId || hoveredOrder.id.substring(0, 8)}
+                <span className="block text-[10px] text-slate-400 font-normal normal-case">
+                  {hoveredItem.type === 'NEXT_MAINTENANCE' ? 'Fecha' : 'Orden'}
+                </span>
+                <span className="text-slate-800 truncate block font-mono" title={hoveredItem.type === 'NEXT_MAINTENANCE' ? hoveredItem.date : (hoveredItem.order?.displayId || hoveredItem.id)}>
+                  {hoveredItem.type === 'NEXT_MAINTENANCE'
+                    ? hoveredItem.date
+                    : (hoveredItem.order?.displayId || hoveredItem.id.substring(0, 8))}
                 </span>
               </div>
             </div>
