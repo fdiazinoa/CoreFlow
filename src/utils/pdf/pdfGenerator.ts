@@ -1322,7 +1322,7 @@ export const generateMaintenanceListPDF = (orders: WorkOrder[], title: string, m
 
   const head = isRMant02 
     ? [['Nº Orden', 'Equipo', 'Zona / Línea', 'Alias', 'Tipo', 'Intervalo', 'Fecha', 'Estado']]
-    : [['Nº Orden', 'Equipo', 'Tipo', 'Departamento', 'Tipo de Avería', 'Fecha', 'Estado']];
+    : [['Nº Orden', 'Equipo', 'Ubicación', 'Tipo', 'Departamento', 'Tipo de Avería', 'Fecha', 'Estado']];
 
   const body = orders.map(o => {
     const machine = machines.find(m => m.id === o.machineId);
@@ -1343,6 +1343,7 @@ export const generateMaintenanceListPDF = (orders: WorkOrder[], title: string, m
       return [
         o.displayId || '(Nuevo)',
         `${machine?.name || '-'} ${machine?.alias ? `(${machine.alias})` : ''}`,
+        machine?.zone || '-',
         o.maintenanceType || '-',
         o.department || '-',
         o.failureType || '-',

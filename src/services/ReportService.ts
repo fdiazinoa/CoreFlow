@@ -60,8 +60,8 @@ export const generateWorkOrderReport = (
     let tableRows: any[] = [];
 
     if (type === 'R-MANT-05') {
-      // Numero de Orden, Fecha, Maquina / Accesorio, Tipo Mantenimiento, Departamento, Tipo Avería
-      tableColumn = ["Nº Orden", "Fecha", "Máquina / Accesorio", "Tipo Mant.", "Departamento", "Tipo Avería"];
+      // Numero de Orden, Fecha, Maquina / Accesorio, Ubicación, Tipo Mantenimiento, Departamento, Tipo Avería
+      tableColumn = ["Nº Orden", "Fecha", "Máquina / Accesorio", "Ubicación", "Tipo Mant.", "Departamento", "Tipo Avería"];
       tableRows = orders.map(order => {
         const machine = machines.find(m => m.id === order.machineId);
         
@@ -76,6 +76,7 @@ export const generateWorkOrderReport = (
           order.displayId || order.id.substring(0, 6),
           order.createdDate ? new Date(order.createdDate).toLocaleDateString() : '-',
           machine?.name || 'N/A',
+          machine?.zone || '-',
           typeLabel,
           order.department || '-',
           order.failureType || '-'
