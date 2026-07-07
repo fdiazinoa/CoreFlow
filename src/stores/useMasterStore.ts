@@ -4,6 +4,7 @@ import { SparePart } from '../types/inventory';
 import { MasterDataService } from '../services/masterDataService';
 import { inventoryService } from '../services'; // For parts
 import { SettingsSupabaseService, GeneralSettings } from '../services/implementations/SettingsSupabase';
+import { useWorkOrderStore } from './useWorkOrderStore';
 
 // Re-export GeneralSettings as PlantSettings for backward compatibility
 type PlantSettings = GeneralSettings;
@@ -92,15 +93,15 @@ interface MasterState {
 
     addBranch: (branch: string) => void;
     removeBranch: (branch: string) => void;
-    updateBranch: (oldVal: string, newVal: string) => void;
+    updateBranch: (oldVal: string, newVal: string) => Promise<void>;
 
     addCategory: (category: string) => void;
     removeCategory: (category: string) => void;
-    updateCategory: (oldVal: string, newVal: string) => void;
+    updateCategory: (oldVal: string, newVal: string) => Promise<void>;
 
     addAssetType: (type: string) => void;
     removeAssetType: (type: string) => void;
-    updateAssetType: (oldVal: string, newVal: string) => void;
+    updateAssetType: (oldVal: string, newVal: string) => Promise<void>;
 
     // Spare Parts Config Actions
     addPartCategory: (category: string) => Promise<void>;
@@ -568,7 +569,23 @@ export const useMasterStore = create<MasterState>((set, get) => ({
             throw error;
         }
     },
-    updateBranch: (oldVal, newVal) => set((state) => ({ branches: state.branches.map(b => b === oldVal ? newVal : b) })),
+    updateBranch: async (oldVal, newVal) => {
+        try {
+            await MasterDataService.updateBranch(oldVal, newVal);
+            set((state) => ({
+                branches: state.branches.map(b => b === oldVal ? newVal : b),
+                machines: state.machines.map(m => m.branch === oldVal ? { ...m, branch: newVal } : m)
+            }));
+            useWorkOrderStore.setState((state) => ({
+                workOrders: state.workOrders.map(o => o.branch === oldVal ? { ...o, branch: newVal } : o),
+                allOrders: state.allOrders.map(o => o.branch === oldVal ? { ...o, branch: newVal } : o),
+                calendarOrders: state.calendarOrders.map(o => o.branch === oldVal ? { ...o, branch: newVal } : o)
+            }));
+        } catch (error: any) {
+            set({ error: error.message });
+            throw error;
+        }
+    },
 
     // Categories
     addCategory: async (category) => {
@@ -589,7 +606,18 @@ export const useMasterStore = create<MasterState>((set, get) => ({
             throw error;
         }
     },
-    updateCategory: (oldVal, newVal) => set((state) => ({ categories: state.categories.map(c => c === oldVal ? newVal : c) })),
+    updateCategory: async (oldVal, newVal) => {
+        try {
+            await MasterDataService.updateCategory(oldVal, newVal);
+            set((state) => ({
+                categories: state.categories.map(c => c === oldVal ? newVal : c),
+                machines: state.machines.map(m => m.category === oldVal ? { ...m, category: newVal } : m)
+            }));
+        } catch (error: any) {
+            set({ error: error.message });
+            throw error;
+        }
+    },
 
     // Asset Types
     addAssetType: async (type) => {
@@ -610,7 +638,23 @@ export const useMasterStore = create<MasterState>((set, get) => ({
             throw error;
         }
     },
-    updateAssetType: (oldVal, newVal) => set((state) => ({ assetTypes: state.assetTypes.map(t => t === oldVal ? newVal : t) })),
+    updateAssetType: async (oldVal, newVal) => {
+        try {
+            await MasterDataService.updateAssetType(oldVal, newVal);
+            set((state) => ({
+                assetTypes: state.assetTypes.map(t => t === oldVal ? newVal : t),
+                machines: state.machines.map(m => m.type === oldVal ? { ...m, type: newVal } : m)
+            }));
+            useWorkOrderStore.setState((state) => ({
+                workOrders: state.workOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal } : o),
+                allOrders: state.allOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal } : o),
+                calendarOrders: state.calendarOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal } : o)
+            }));
+        } catch (error: any) {
+            set({ error: error.message });
+            throw error;
+        }
+    },
 
     // Spare Parts Configuration (Async with Supabase)
     addPartCategory: async (category) => {

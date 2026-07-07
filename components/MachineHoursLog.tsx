@@ -26,6 +26,16 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
     const [notes, setNotes] = useState<string>('');
     const [selectedLogForDetails, setSelectedLogForDetails] = useState<MachineHourLog | null>(null);
 
+    // Edit States
+    const [isEditing, setIsEditing] = useState(false);
+    const [editDate, setEditDate] = useState('');
+    const [editReading, setEditReading] = useState(0);
+    const [editDisplayReading, setEditDisplayReading] = useState('');
+    const [editUnit, setEditUnit] = useState<'h' | 'km'>('h');
+    const [editOperator, setEditOperator] = useState('');
+    const [editNextMaintenanceDate, setEditNextMaintenanceDate] = useState<string>('');
+    const [editNotes, setEditNotes] = useState('');
+
     // Filters
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
@@ -83,6 +93,105 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
         setNextMaintenanceDate('');
         setNotes('');
     }, [selectedMachineId]);
+
+    // Sync selected log to edit state
+    useEffect(() => {
+        if (selectedLogForDetails) {
+            setEditDate(selectedLogForDetails.date || '');
+            setEditReading(selectedLogForDetails.hoursLogged || 0);
+            setEditDisplayReading(new Intl.NumberFormat('en-US').format(selectedLogForDetails.hoursLogged || 0));
+            setEditUnit(selectedLogForDetails.unit || 'h');
+            setEditOperator(selectedLogForDetails.operator || '');
+            setEditNotes(selectedLogForDetails.comments || '');
+            
+            const machine = machines.find(m => m.id === selectedLogForDetails.machineId);
+            if (machine?.nextMaintenance) {
+                setEditNextMaintenanceDate(machine.nextMaintenance.split('T')[0]);
+            } else {
+                setEditNextMaintenanceDate('');
+            }
+            setIsEditing(false);
+        }
+    }, [selectedLogForDetails, machines]);
+
+    const handleEditReadingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        const rawValue = val.replace(/,/g, '');
+
+        if (rawValue === '') {
+            setEditReading(0);
+            setEditDisplayReading('');
+            return;
+        }
+
+        if (!/^\d+$/.test(rawValue)) return;
+
+        const numValue = parseInt(rawValue, 10);
+        setEditReading(numValue);
+        setEditDisplayReading(new Intl.NumberFormat('en-US').format(numValue));
+    };
+
+    const handleUpdateLog = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedLogForDetails) return;
+
+        if (editReading <= 0) {
+            alert("Por favor ingrese una lectura válida.");
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await MasterDataService.updateMachineHourLog(selectedLogForDetails.id, {
+                machineId: selectedLogForDetails.machineId,
+                date: editDate,
+                hoursLogged: editReading,
+                unit: editUnit,
+                operator: editOperator,
+                comments: editNotes ? editNotes : undefined,
+                nextMaintenance: editNextMaintenanceDate ? editNextMaintenanceDate : undefined
+            });
+
+            // Update local machines reference for immediate sync
+            const machineToUpdate = machines.find(m => m.id === selectedLogForDetails.machineId);
+            if (machineToUpdate) {
+                const latestLogsResult = await MasterDataService.getFilteredMachineHourLogs({
+                    machineId: selectedLogForDetails.machineId,
+                    limit: 1
+                });
+                if (latestLogsResult.data && latestLogsResult.data.length > 0) {
+                    const latest = latestLogsResult.data[0];
+                    machineToUpdate.runningHours = latest.hoursLogged;
+                }
+                
+                if (editNextMaintenanceDate !== undefined) {
+                    machineToUpdate.nextMaintenance = editNextMaintenanceDate;
+                }
+            }
+
+            // Re-fetch current filters view
+            const result = await MasterDataService.getFilteredMachineHourLogs({
+                machineId: selectedMachineId || undefined,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+                page: currentPage,
+                limit: ITEMS_PER_PAGE
+            });
+            setHistory(result.data);
+            setTotalLogs(result.total);
+
+            // Close edit modal
+            setIsEditing(false);
+            setSelectedLogForDetails(null);
+            
+            alert("Registro actualizado con éxito.");
+        } catch (error) {
+            console.error("Error updating log:", error);
+            alert("Error al actualizar el registro.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleLog = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -497,14 +606,14 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                                                         console.error(e);
                                                     }
                                                 }
-                                
+
                                                 return (
                                                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
                                                         <div className="bg-industrial-800 border border-industrial-700 rounded-xl shadow-2xl max-w-md w-full overflow-hidden transform scale-100 transition-transform duration-300">
                                                             {/* Modal Header */}
                                                             <div className="p-4 border-b border-industrial-700 flex justify-between items-center bg-industrial-900/50">
                                                                 <h3 className="text-white font-bold text-lg flex items-center gap-2">
-                                                                    <Clock className="w-5 h-5 text-industrial-accent" /> Detalle del Registro
+                                                                    <Clock className="w-5 h-5 text-industrial-accent" /> {isEditing ? 'Editar Registro' : 'Detalle del Registro'}
                                                                 </h3>
                                                                 <button
                                                                     onClick={() => setSelectedLogForDetails(null)}
@@ -519,7 +628,16 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                                                                 <div className="grid grid-cols-2 gap-4">
                                                                     <div className="space-y-1">
                                                                         <span className="text-xs text-industrial-500 font-bold uppercase block">Fecha del Registro</span>
-                                                                        <span className="text-white font-mono">{selectedLogForDetails.date}</span>
+                                                                        {isEditing ? (
+                                                                            <input
+                                                                                type="date"
+                                                                                className="w-full bg-industrial-900 border border-industrial-600 rounded px-2 py-1 text-white font-mono text-xs focus:border-emerald-500 outline-none [color-scheme:dark]"
+                                                                                value={editDate}
+                                                                                onChange={e => setEditDate(e.target.value)}
+                                                                            />
+                                                                        ) : (
+                                                                            <span className="text-white font-mono">{selectedLogForDetails.date}</span>
+                                                                        )}
                                                                     </div>
                                                                     <div className="space-y-1">
                                                                         <span className="text-xs text-industrial-500 font-bold uppercase block">Hora de la Lectura</span>
@@ -544,40 +662,115 @@ export const MachineHoursLog: React.FC<MachineHoursLogProps> = ({ machines }) =>
                                                                 <div className="border-t border-industrial-700/50 pt-3 grid grid-cols-2 gap-4">
                                                                     <div>
                                                                         <span className="text-xs text-industrial-500 font-bold uppercase block">Lectura</span>
-                                                                        <span className="text-emerald-400 font-mono font-bold text-base">
-                                                                            {new Intl.NumberFormat('en-US').format(selectedLogForDetails.hoursLogged)} {selectedLogForDetails.unit}
-                                                                        </span>
+                                                                        {isEditing ? (
+                                                                            <div className="flex gap-2 items-center">
+                                                                                <input
+                                                                                    type="text"
+                                                                                    required
+                                                                                    className="w-full bg-industrial-900 border border-industrial-600 rounded px-2 py-1 text-white font-mono text-xs focus:border-emerald-500 outline-none"
+                                                                                    value={editDisplayReading}
+                                                                                    onChange={handleEditReadingChange}
+                                                                                />
+                                                                                <select
+                                                                                    className="bg-industrial-900 border border-industrial-600 rounded px-2 py-1 text-white text-xs focus:border-emerald-500 outline-none"
+                                                                                    value={editUnit}
+                                                                                    onChange={e => setEditUnit(e.target.value as 'h' | 'km')}
+                                                                                >
+                                                                                    <option value="h">h</option>
+                                                                                    <option value="km">km</option>
+                                                                                </select>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-emerald-400 font-mono font-bold text-base">
+                                                                                {new Intl.NumberFormat('en-US').format(selectedLogForDetails.hoursLogged)} {selectedLogForDetails.unit}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                 
                                                                     <div>
                                                                         <span className="text-xs text-industrial-500 font-bold uppercase block">Fecha Próximo Mantenimiento</span>
-                                                                        <span className="text-white font-mono">
-                                                                            {nextMaintenance ? nextMaintenance.split('T')[0] : '-'}
-                                                                        </span>
+                                                                        {isEditing ? (
+                                                                            <input
+                                                                                type="date"
+                                                                                className="w-full bg-industrial-900 border border-industrial-600 rounded px-2 py-1 text-white font-mono text-xs focus:border-emerald-500 outline-none [color-scheme:dark]"
+                                                                                value={editNextMaintenanceDate}
+                                                                                onChange={e => setEditNextMaintenanceDate(e.target.value)}
+                                                                            />
+                                                                        ) : (
+                                                                            <span className="text-white font-mono">
+                                                                                {nextMaintenance ? nextMaintenance.split('T')[0] : '-'}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                 
                                                                 <div className="border-t border-industrial-700/50 pt-3 space-y-1">
                                                                     <span className="text-xs text-industrial-500 font-bold uppercase block">Operador</span>
-                                                                    <span className="text-white">{selectedLogForDetails.operator}</span>
+                                                                    {isEditing ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            className="w-full bg-industrial-900 border border-industrial-600 rounded px-2 py-1 text-white text-xs focus:border-emerald-500 outline-none"
+                                                                            value={editOperator}
+                                                                            onChange={e => setEditOperator(e.target.value)}
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="text-white">{selectedLogForDetails.operator}</span>
+                                                                    )}
                                                                 </div>
                                 
                                                                 <div className="border-t border-industrial-700/50 pt-3 space-y-1">
                                                                     <span className="text-xs text-industrial-500 font-bold uppercase block">Notas</span>
-                                                                    <div className="bg-industrial-900 border border-industrial-700/80 rounded p-3 text-white text-xs whitespace-pre-wrap min-h-[60px] max-h-40 overflow-y-auto">
-                                                                        {selectedLogForDetails.comments || <span className="text-industrial-500 italic">Sin notas</span>}
-                                                                    </div>
+                                                                    {isEditing ? (
+                                                                        <textarea
+                                                                            rows={3}
+                                                                            className="w-full bg-industrial-900 border border-industrial-600 rounded p-2 text-white text-xs focus:border-emerald-500 outline-none resize-none"
+                                                                            value={editNotes}
+                                                                            onChange={e => setEditNotes(e.target.value)}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="bg-industrial-900 border border-industrial-700/80 rounded p-3 text-white text-xs whitespace-pre-wrap min-h-[60px] max-h-40 overflow-y-auto">
+                                                                            {selectedLogForDetails.comments || <span className="text-industrial-500 italic">Sin notas</span>}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                 
                                                             {/* Modal Footer */}
-                                                            <div className="p-4 border-t border-industrial-700 bg-industrial-900/30 flex justify-end">
-                                                                <button
-                                                                    onClick={() => setSelectedLogForDetails(null)}
-                                                                    className="bg-industrial-700 hover:bg-industrial-600 text-white px-4 py-2 rounded font-bold text-xs transition-colors"
-                                                                >
-                                                                    Cerrar
-                                                                </button>
+                                                            <div className="p-4 border-t border-industrial-700 bg-industrial-900/30 flex justify-end gap-2">
+                                                                {isEditing ? (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => setIsEditing(false)}
+                                                                            className="bg-industrial-700 hover:bg-industrial-600 text-white px-4 py-2 rounded font-bold text-xs transition-colors"
+                                                                        >
+                                                                            Cancelar
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={handleUpdateLog}
+                                                                            disabled={isLoading}
+                                                                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded font-bold text-xs transition-colors disabled:opacity-50"
+                                                                        >
+                                                                            {isLoading ? 'Guardando...' : 'Guardar'}
+                                                                        </button>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        {canRegister && (
+                                                                            <button
+                                                                                onClick={() => setIsEditing(true)}
+                                                                                className="bg-industrial-accent hover:bg-blue-600 text-white px-4 py-2 rounded font-bold text-xs transition-colors"
+                                                                            >
+                                                                                Editar
+                                                                            </button>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={() => setSelectedLogForDetails(null)}
+                                                                            className="bg-industrial-700 hover:bg-industrial-600 text-white px-4 py-2 rounded font-bold text-xs transition-colors"
+                                                                        >
+                                                                            Cerrar
+                                                                        </button>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

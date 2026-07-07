@@ -19,25 +19,40 @@ export const MaintenanceCalendar: React.FC = () => {
   const [activeView, setActiveView] = useState<'month' | 'week' | 'day'>('month');
   
   // Filter States: R-MANT-02 (Preventive), R-MANT-05 (Corrective), and Next Maintenances
-  // Default to showing all
-  const [showMant02, setShowMant02] = useState<boolean>(true);
-  const [showMant05, setShowMant05] = useState<boolean>(true);
-  const [showNextMaint, setShowNextMaint] = useState<boolean>(true);
+  // Default to showing all, load from localStorage if available
+  const [showMant02, setShowMant02] = useState<boolean>(() => {
+    const saved = localStorage.getItem('calendar_show_mant02');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [showMant05, setShowMant05] = useState<boolean>(() => {
+    const saved = localStorage.getItem('calendar_show_mant05');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [showNextMaint, setShowNextMaint] = useState<boolean>(() => {
+    const saved = localStorage.getItem('calendar_show_next_maint');
+    return saved !== null ? saved === 'true' : true;
+  });
 
   // Toggle handlers ensuring at least one filter remains active
   const handleToggleMant02 = () => {
     if (showMant02 && !showMant05 && !showNextMaint) return;
-    setShowMant02(!showMant02);
+    const newValue = !showMant02;
+    setShowMant02(newValue);
+    localStorage.setItem('calendar_show_mant02', String(newValue));
   };
 
   const handleToggleMant05 = () => {
     if (showMant05 && !showMant02 && !showNextMaint) return;
-    setShowMant05(!showMant05);
+    const newValue = !showMant05;
+    setShowMant05(newValue);
+    localStorage.setItem('calendar_show_mant05', String(newValue));
   };
 
   const handleToggleNextMaint = () => {
     if (showNextMaint && !showMant02 && !showMant05) return;
-    setShowNextMaint(!showNextMaint);
+    const newValue = !showNextMaint;
+    setShowNextMaint(newValue);
+    localStorage.setItem('calendar_show_next_maint', String(newValue));
   };
 
   // Calendar item interface to unify orders and next maintenance events
@@ -333,10 +348,10 @@ export const MaintenanceCalendar: React.FC = () => {
                         }}
                         className={`cursor-pointer px-2 py-1 rounded text-[11px] font-medium transition-all duration-150 truncate block select-none border ${
                           isMant02
-                            ? 'bg-blue-600/10 text-blue-300 border-blue-500/20 hover:bg-blue-600/20 hover:border-blue-500/40'
+                            ? 'bg-emerald-600/10 text-emerald-300 border-emerald-500/20 hover:bg-emerald-600/20 hover:border-emerald-500/40'
                             : isMant05
                             ? 'bg-amber-600/10 text-amber-300 border-amber-500/20 hover:bg-amber-600/20 hover:border-amber-500/40'
-                            : 'bg-emerald-600/10 text-emerald-300 border-emerald-500/20 hover:bg-emerald-600/20 hover:border-emerald-500/40'
+                            : 'bg-blue-600/10 text-blue-300 border-blue-500/20 hover:bg-blue-600/20 hover:border-blue-500/40'
                         }`}
                       >
                         {isNextMaint ? '🔧 ' : ''}{item.title} - {item.line}
@@ -427,10 +442,10 @@ export const MaintenanceCalendar: React.FC = () => {
                         }}
                         className={`cursor-pointer p-2.5 rounded-lg border text-xs transition-all duration-200 shadow-md ${
                           isMant02
-                            ? 'bg-blue-600/10 text-blue-200 border-blue-500/30 hover:border-blue-400/50 hover:bg-blue-600/20'
+                            ? 'bg-emerald-600/10 text-emerald-200 border-emerald-500/30 hover:border-emerald-400/50 hover:bg-emerald-600/20'
                             : isMant05
                             ? 'bg-amber-600/10 text-amber-200 border-amber-500/30 hover:border-amber-400/50 hover:bg-amber-600/20'
-                            : 'bg-emerald-600/10 text-emerald-200 border-emerald-500/30 hover:border-emerald-400/50 hover:bg-emerald-600/20'
+                            : 'bg-blue-600/10 text-blue-200 border-blue-500/30 hover:border-blue-400/50 hover:bg-blue-600/20'
                         }`}
                       >
                         <div className="flex justify-between items-center mb-1">
@@ -451,7 +466,7 @@ export const MaintenanceCalendar: React.FC = () => {
                         <p className="text-industrial-400 text-[11px] mt-1 flex justify-between items-center">
                           <span>{item.line}</span>
                           {isNextMaint ? (
-                            <span className="italic text-emerald-400 font-semibold">
+                            <span className="italic text-blue-400 font-semibold">
                               {language === 'es' ? 'Estimado' : 'Est.'}
                             </span>
                           ) : (
@@ -512,18 +527,18 @@ export const MaintenanceCalendar: React.FC = () => {
                   }}
                   className={`cursor-pointer p-4 rounded-xl border flex justify-between items-start gap-4 transition-all duration-200 hover:shadow-lg hover:border-industrial-500 ${
                     isMant02
-                      ? 'bg-blue-600/10 text-blue-200 border-blue-500/20'
+                      ? 'bg-emerald-600/10 text-emerald-200 border-emerald-500/20'
                       : isMant05
                       ? 'bg-amber-600/10 text-amber-200 border-amber-500/20'
-                      : 'bg-emerald-600/10 text-emerald-200 border-emerald-500/20'
+                      : 'bg-blue-600/10 text-blue-200 border-blue-500/20'
                   }`}
                 >
                   <div className="space-y-2 flex-1">
                     <div className="flex items-center gap-3">
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                        isMant02 ? 'bg-blue-600 text-white border-blue-400' :
+                        isMant02 ? 'bg-emerald-600 text-white border-emerald-400' :
                         isMant05 ? 'bg-amber-600 text-white border-amber-400' :
-                        'bg-emerald-600 text-white border-emerald-400'
+                        'bg-blue-600 text-white border-blue-400'
                       }`}>
                         {isNextMaint
                           ? (language === 'es' ? 'PRÓXIMO MANTENIMIENTO' : 'NEXT MAINTENANCE')
@@ -666,11 +681,11 @@ export const MaintenanceCalendar: React.FC = () => {
               onClick={handleToggleMant02}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 flex items-center gap-2 ${
                 showMant02
-                  ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 ring-1 ring-blue-500/25 shadow-lg'
+                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 ring-1 ring-emerald-500/25 shadow-lg'
                   : 'bg-industrial-950/20 text-industrial-500 border-industrial-800 hover:border-industrial-700'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full ${showMant02 ? 'bg-blue-400 animate-pulse' : 'bg-industrial-600'}`}></span>
+              <span className={`w-2 h-2 rounded-full ${showMant02 ? 'bg-emerald-400 animate-pulse' : 'bg-industrial-600'}`}></span>
               R-MANT-02
             </button>
             <button
@@ -688,11 +703,11 @@ export const MaintenanceCalendar: React.FC = () => {
               onClick={handleToggleNextMaint}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 flex items-center gap-2 ${
                 showNextMaint
-                  ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 ring-1 ring-emerald-500/25 shadow-lg'
+                  ? 'bg-blue-600/20 text-blue-300 border-blue-500/40 ring-1 ring-blue-500/25 shadow-lg'
                   : 'bg-industrial-950/20 text-industrial-500 border-industrial-800 hover:border-industrial-700'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full ${showNextMaint ? 'bg-emerald-400 animate-pulse' : 'bg-industrial-600'}`}></span>
+              <span className={`w-2 h-2 rounded-full ${showNextMaint ? 'bg-blue-400 animate-pulse' : 'bg-industrial-600'}`}></span>
               {language === 'es' ? 'Próximos Mantenimientos' : 'Upcoming Maintenance'}
             </button>
           </div>

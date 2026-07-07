@@ -256,6 +256,55 @@ export class MasterMockService {
 
         return newLog;
     }
+
+    async updateMachineHourLog(id: string, log: {
+        machineId: string;
+        date: string;
+        hoursLogged: number;
+        unit: 'h' | 'km';
+        operator: string;
+        comments?: string;
+        nextMaintenance?: string | null;
+    }): Promise<MachineHourLog> {
+        const logs = loadFromStorage(MACHINE_LOGS_KEY, INITIAL_MACHINE_LOGS);
+        const logIndex = logs.findIndex(l => l.id === id);
+        if (logIndex === -1) {
+            throw new Error("Log not found");
+        }
+
+        // Update the log
+        logs[logIndex] = {
+            ...logs[logIndex],
+            date: log.date,
+            hoursLogged: log.hoursLogged,
+            unit: log.unit,
+            operator: log.operator,
+            comments: log.comments,
+            createdAt: logs[logIndex].createdAt || new Date().toISOString()
+        };
+
+        saveToStorage(MACHINE_LOGS_KEY, logs);
+
+        // Fetch latest log for this machine to sync machine's runningHours
+        const machineLogs = logs.filter(l => l.machineId === log.machineId);
+        // Sort: date desc, then createdAt desc
+        machineLogs.sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+        if (machineLogs.length > 0) {
+            const latestReading = machineLogs[0].hoursLogged;
+            const machines = loadFromStorage(MACHINES_KEY, INITIAL_MACHINES);
+            const machineIndex = machines.findIndex(m => m.id === log.machineId);
+            if (machineIndex !== -1) {
+                machines[machineIndex].runningHours = latestReading;
+                if (log.nextMaintenance !== undefined) {
+                    machines[machineIndex].nextMaintenance = log.nextMaintenance;
+                }
+                saveToStorage(MACHINES_KEY, machines);
+            }
+        }
+
+        return logs[logIndex];
+    }
 }
 
 export const masterMockService = new MasterMockService();
