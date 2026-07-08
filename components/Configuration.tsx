@@ -588,7 +588,7 @@ export const Configuration: React.FC<ConfigurationProps> = ({
                             </div>
                           </button>
 
-                          {hasRole([UserRole.ADMIN_SOLICITANTE]) && (
+                          {(hasRole([UserRole.ADMIN_SOLICITANTE]) || hasPermission('manage_config')) && (
                             <div className="absolute top-2 right-2">
                               {machineToRemove === m.id ? (
                                 <div className="flex gap-1 bg-industrial-800 p-1 rounded shadow-lg border border-industrial-600">
@@ -1353,9 +1353,15 @@ export const Configuration: React.FC<ConfigurationProps> = ({
                           type="text"
                           defaultValue={item}
                           className="bg-transparent text-industrial-300 border-none focus:ring-0 p-0 w-full mr-2"
-                          onBlur={(e) => {
-                            if (e.target.value !== item && e.target.value.trim() !== '') {
-                              updateBranch(item, e.target.value.trim());
+                          onBlur={async (e) => {
+                            const val = e.target.value.trim();
+                            if (val !== item && val !== '') {
+                              try {
+                                await updateBranch(item, val);
+                              } catch (err: any) {
+                                alert(`Error al actualizar sucursal: ${err.message || err}`);
+                                e.target.value = item;
+                              }
                             } else {
                               e.target.value = item;
                             }
@@ -1412,9 +1418,15 @@ export const Configuration: React.FC<ConfigurationProps> = ({
                           type="text"
                           defaultValue={item}
                           className="bg-transparent text-industrial-300 border-none focus:ring-0 p-0 w-full mr-2"
-                          onBlur={(e) => {
-                            if (e.target.value !== item && e.target.value.trim() !== '') {
-                              updateCategory(item, e.target.value.trim());
+                          onBlur={async (e) => {
+                            const val = e.target.value.trim();
+                            if (val !== item && val !== '') {
+                              try {
+                                await updateCategory(item, val);
+                              } catch (err: any) {
+                                alert(`Error al actualizar categoría: ${err.message || err}`);
+                                e.target.value = item;
+                              }
                             } else {
                               e.target.value = item;
                             }
@@ -1471,9 +1483,15 @@ export const Configuration: React.FC<ConfigurationProps> = ({
                           type="text"
                           defaultValue={item}
                           className="bg-transparent text-industrial-300 border-none focus:ring-0 p-0 w-full mr-2"
-                          onBlur={(e) => {
-                            if (e.target.value !== item && e.target.value.trim() !== '') {
-                              updateAssetType(item, e.target.value.trim());
+                          onBlur={async (e) => {
+                            const val = e.target.value.trim();
+                            if (val !== item && val !== '') {
+                              try {
+                                await updateAssetType(item, val);
+                              } catch (err: any) {
+                                alert(`Error al actualizar tipo de activo: ${err.message || err}`);
+                                e.target.value = item;
+                              }
                             } else {
                               e.target.value = item;
                             }

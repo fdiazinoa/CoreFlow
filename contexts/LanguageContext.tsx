@@ -94,6 +94,8 @@ const translations: Translations = {
     'hours.log': 'Log Usage',
     'hours.current': 'Current Reading',
     'hours.last': 'Last Logged',
+    'hours.nextMaintenanceDate': 'Estimated Next Maintenance Date',
+    'hours.notes': 'Notes',
 
     // Maintenance List
     'mant.new': '+ New Record',
@@ -309,6 +311,8 @@ const translations: Translations = {
     'hours.log': 'Registrar Uso',
     'hours.current': 'Lectura Actual',
     'hours.last': 'Último Registro',
+    'hours.nextMaintenanceDate': 'Fecha Estimada Próximo Mantenimiento',
+    'hours.notes': 'Notas',
 
     // Maintenance List
     'mant.new': '+ Nuevo Registro',

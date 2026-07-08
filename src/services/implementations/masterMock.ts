@@ -14,7 +14,8 @@ const INITIAL_MACHINE_LOGS: MachineHourLog[] = [
         hoursLogged: 1200,
         unit: 'h',
         operator: 'Juan Perez',
-        comments: 'Lectura de rutina'
+        comments: 'Lectura de rutina',
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString()
     },
     {
         id: 'log-2',
@@ -23,7 +24,8 @@ const INITIAL_MACHINE_LOGS: MachineHourLog[] = [
         hoursLogged: 1250,
         unit: 'h',
         operator: 'Juan Perez',
-        comments: 'Lectura de rutina'
+        comments: 'Lectura de rutina',
+        createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString()
     },
     {
         id: 'log-3',
@@ -32,7 +34,8 @@ const INITIAL_MACHINE_LOGS: MachineHourLog[] = [
         hoursLogged: 850,
         unit: 'h',
         operator: 'Maria Garcia',
-        comments: 'Lectura de rutina'
+        comments: 'Lectura de rutina',
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 - 2 * 60 * 60 * 1000).toISOString()
     }
 ];
 
@@ -224,6 +227,7 @@ export class MasterMockService {
         unit: 'h' | 'km'; 
         operator: string; 
         comments?: string; 
+        nextMaintenance?: string | null;
     }): Promise<MachineHourLog> {
         const logs = loadFromStorage(MACHINE_LOGS_KEY, INITIAL_MACHINE_LOGS);
         const newLog: MachineHourLog = {
@@ -233,20 +237,73 @@ export class MasterMockService {
             hoursLogged: log.hoursLogged,
             unit: log.unit,
             operator: log.operator,
-            comments: log.comments
+            comments: log.comments,
+            createdAt: new Date().toISOString()
         };
         logs.unshift(newLog);
         saveToStorage(MACHINE_LOGS_KEY, logs);
 
-        // Also update the machine's runningHours in localStorage
+        // Also update the machine's runningHours and nextMaintenance in localStorage
         const machines = loadFromStorage(MACHINES_KEY, INITIAL_MACHINES);
         const machineIndex = machines.findIndex(m => m.id === log.machineId);
         if (machineIndex !== -1) {
             machines[machineIndex].runningHours = log.hoursLogged;
+            if (log.nextMaintenance !== undefined) {
+                machines[machineIndex].nextMaintenance = log.nextMaintenance;
+            }
             saveToStorage(MACHINES_KEY, machines);
         }
 
         return newLog;
+    }
+
+    async updateMachineHourLog(id: string, log: {
+        machineId: string;
+        date: string;
+        hoursLogged: number;
+        unit: 'h' | 'km';
+        operator: string;
+        comments?: string;
+        nextMaintenance?: string | null;
+    }): Promise<MachineHourLog> {
+        const logs = loadFromStorage(MACHINE_LOGS_KEY, INITIAL_MACHINE_LOGS);
+        const logIndex = logs.findIndex(l => l.id === id);
+        if (logIndex === -1) {
+            throw new Error("Log not found");
+        }
+
+        // Update the log
+        logs[logIndex] = {
+            ...logs[logIndex],
+            date: log.date,
+            hoursLogged: log.hoursLogged,
+            unit: log.unit,
+            operator: log.operator,
+            comments: log.comments,
+            createdAt: logs[logIndex].createdAt || new Date().toISOString()
+        };
+
+        saveToStorage(MACHINE_LOGS_KEY, logs);
+
+        // Fetch latest log for this machine to sync machine's runningHours
+        const machineLogs = logs.filter(l => l.machineId === log.machineId);
+        // Sort: date desc, then createdAt desc
+        machineLogs.sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+        if (machineLogs.length > 0) {
+            const latestReading = machineLogs[0].hoursLogged;
+            const machines = loadFromStorage(MACHINES_KEY, INITIAL_MACHINES);
+            const machineIndex = machines.findIndex(m => m.id === log.machineId);
+            if (machineIndex !== -1) {
+                machines[machineIndex].runningHours = latestReading;
+                if (log.nextMaintenance !== undefined) {
+                    machines[machineIndex].nextMaintenance = log.nextMaintenance;
+                }
+                saveToStorage(MACHINES_KEY, machines);
+            }
+        }
+
+        return logs[logIndex];
     }
 }
 

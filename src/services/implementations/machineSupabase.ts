@@ -244,7 +244,8 @@ export const MachineSupabaseService = {
       hoursLogged: log.hours_logged,
       unit: log.unit || 'h',
       operator: log.operator || 'Unknown',
-      comments: log.comments
+      comments: log.comments,
+      createdAt: log.created_at
     }));
   },
 
@@ -278,7 +279,8 @@ export const MachineSupabaseService = {
       hoursLogged: log.hours_logged,
       unit: log.unit || 'h',
       operator: log.operator || 'Unknown',
-      comments: log.comments
+      comments: log.comments,
+      createdAt: log.created_at
     }));
   },
 
@@ -324,32 +326,25 @@ export const MachineSupabaseService = {
       hoursLogged: log.hours_logged,
       unit: log.unit || 'h',
       operator: log.operator || 'Unknown',
-      comments: log.comments
+      comments: log.comments,
+      createdAt: log.created_at
     }));
 
     return { data: mappedData, total: count || 0 };
   },
 
-  async logMachineHours(log: { machineId: string, hoursLogged: number, unit: 'h' | 'km', operator: string, comments?: string }): Promise<any> {
-    // 1. Get current machine to update hours
-    const { data: machineData, error: fetchError } = await supabase
-      .from('machines')
-      .select('running_hours')
-      .eq('id', log.machineId)
-      .single();
+  async logMachineHours(log: { machineId: string, hoursLogged: number, unit: 'h' | 'km', operator: string, comments?: string, nextMaintenance?: string | null }): Promise<any> {
+    const newTotalHours = log.hoursLogged;
 
-    if (fetchError) {
-      console.error("Failed to fetch machine hours:", fetchError);
-      throw fetchError;
+    // 1. Update machine hours & next maintenance
+    const updatePayload: any = { running_hours: newTotalHours, updated_at: new Date().toISOString() };
+    if (log.nextMaintenance !== undefined) {
+      updatePayload.next_maintenance = log.nextMaintenance;
     }
 
-    const currentHours = machineData.running_hours || 0;
-    const newTotalHours = currentHours + log.hoursLogged;
-
-    // 2. Update machine hours
     const { error: updateError } = await supabase
       .from('machines')
-      .update({ running_hours: newTotalHours, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq('id', log.machineId);
 
     if (updateError) {
@@ -383,7 +378,83 @@ export const MachineSupabaseService = {
       hoursLogged: logData.hours_logged,
       unit: logData.unit,
       operator: logData.operator,
-      comments: logData.comments
+      comments: logData.comments,
+      createdAt: logData.created_at
+    };
+  },
+
+  async updateMachineHourLog(id: string, log: {
+    machineId: string;
+    date: string;
+    hoursLogged: number;
+    unit: 'h' | 'km';
+    operator: string;
+    comments?: string;
+    nextMaintenance?: string | null;
+  }): Promise<any> {
+    // 1. Update the log row
+    const { data: logData, error: updateLogError } = await supabase
+      .from('machine_hour_logs')
+      .update({
+        date: log.date,
+        hours_logged: log.hoursLogged,
+        operator: log.operator,
+        comments: log.comments || null,
+        unit: log.unit
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateLogError) {
+      console.error("Failed to update log:", updateLogError);
+      throw updateLogError;
+    }
+
+    // 2. Fetch the latest log for this machine to update machine's running_hours
+    const { data: latestLogs, error: latestError } = await supabase
+      .from('machine_hour_logs')
+      .select('hours_logged, unit')
+      .eq('machine_id', log.machineId)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (latestError) {
+      console.error("Failed to fetch latest log for syncing:", latestError);
+    } else if (latestLogs && latestLogs.length > 0) {
+      const latestReading = latestLogs[0].hours_logged;
+      
+      // Update machine hours in DB
+      const updateMachinePayload: any = {
+        running_hours: latestReading,
+        updated_at: new Date().toISOString()
+      };
+      
+      // If next maintenance was provided and is not undefined, update it as well
+      if (log.nextMaintenance !== undefined) {
+        updateMachinePayload.next_maintenance = log.nextMaintenance;
+      }
+
+      const { error: updateMachineError } = await supabase
+        .from('machines')
+        .update(updateMachinePayload)
+        .eq('id', log.machineId);
+
+      if (updateMachineError) {
+        console.error("Failed to sync machine hours/next maintenance:", updateMachineError);
+      }
+    }
+
+    return {
+      id: logData.id,
+      machineId: logData.machine_id,
+      date: logData.date,
+      hoursLogged: logData.hours_logged,
+      unit: logData.unit,
+      operator: logData.operator,
+      comments: logData.comments,
+      createdAt: logData.created_at
     };
   },
 

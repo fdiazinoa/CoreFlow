@@ -308,6 +308,7 @@ export interface MachineHourLog {
   unit: 'h' | 'km';
   operator: string;
   comments?: string;
+  createdAt?: string;
 }
 
 export interface SparePart {

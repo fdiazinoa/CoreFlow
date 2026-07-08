@@ -317,7 +317,10 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({ type }) => {
                     <th className="px-6 py-4">Intervalo</th>
                   </>
                 ) : (
-                  <th className="px-6 py-4">Máquina / Accesorio</th>
+                  <>
+                    <th className="px-6 py-4">Máquina / Accesorio</th>
+                    <th className="px-6 py-4">Ubicación</th>
+                  </>
                 )}
                 {type === 'R-MANT-05' && (
                   <>
@@ -333,7 +336,7 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({ type }) => {
             <tbody className="divide-y divide-industrial-700">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={type === 'R-MANT-02' ? 8 : 7} className="px-6 py-12 text-center text-industrial-600 italic">
+                  <td colSpan={8} className="px-6 py-12 text-center text-industrial-600 italic">
                     No records found matching filters
                   </td>
                 </tr>
@@ -386,6 +389,10 @@ export const MaintenanceList: React.FC<MaintenanceListProps> = ({ type }) => {
                           {/* Máquina / Accesorio */}
                           <td className="px-6 py-4 text-white font-medium">
                             {machine?.name || '-'} {machine?.alias ? `(${machine.alias})` : ''}
+                          </td>
+                          {/* Ubicación */}
+                          <td className="px-6 py-4 text-white font-medium">
+                            {machine?.zone || '-'}
                           </td>
                           {/* Tipo Mantenimiento */}
                           <td className="px-6 py-4 text-white font-medium">

@@ -28,6 +28,7 @@ const SYSTEM_PERMISSIONS: Permission[] = [
     { id: 'view_analytics', category: 'FINANCIAL', label: 'Ver Analíticas y BI', description: 'Acceso completo a dashboard de reportes.' },
     
     // Sistema
+    { id: 'manage_config', category: 'SYSTEM', label: 'Gestionar Configuración', description: 'Acceso al módulo de Configuración y gestión de submódulos.' },
     { id: 'manage_users', category: 'SYSTEM', label: 'Gestionar Usuarios', description: 'Invitar usuarios y asignar roles.' },
     { id: 'manage_roles', category: 'SYSTEM', label: 'Gestionar Roles y Permisos', description: 'Configurar este módulo RBAC.' },
 ];

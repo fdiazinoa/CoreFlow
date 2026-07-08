@@ -43,8 +43,21 @@ export const MasterDataService = {
     unit: 'h' | 'km'; 
     operator: string; 
     comments?: string; 
+    nextMaintenance?: string | null;
   }): Promise<any> {
     return (machineService as any).logMachineHours(log);
+  },
+
+  async updateMachineHourLog(id: string, log: {
+    machineId: string;
+    date: string;
+    hoursLogged: number;
+    unit: 'h' | 'km';
+    operator: string;
+    comments?: string;
+    nextMaintenance?: string | null;
+  }): Promise<any> {
+    return (machineService as any).updateMachineHourLog(id, log);
   },
 
   // TECHNICIANS
@@ -222,6 +235,22 @@ export const MasterDataService = {
     const { error } = await supabase.from('branches').delete().eq('name', name);
     if (error) throw error;
   },
+  async updateBranch(oldVal: string, newVal: string): Promise<void> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const list = await this.getBranches();
+      const updated = list.map((b: string) => b === oldVal ? newVal : b);
+      localStorage.setItem('v2_cmms_branches', JSON.stringify(updated));
+      return;
+    }
+    const { error: configError } = await supabase.from('branches').update({ name: newVal }).eq('name', oldVal);
+    if (configError) throw configError;
+
+    const { error: machineError } = await supabase.from('machines').update({ branch: newVal }).eq('branch', oldVal);
+    if (machineError) throw machineError;
+
+    const { error: orderError } = await supabase.from('work_orders').update({ branch: newVal }).eq('branch', oldVal);
+    if (orderError) throw orderError;
+  },
 
   // CATEGORIES
   async getCategories(): Promise<string[]> {
@@ -260,6 +289,19 @@ export const MasterDataService = {
     const { error } = await supabase.from('asset_categories').delete().eq('name', name);
     if (error) throw error;
   },
+  async updateCategory(oldVal: string, newVal: string): Promise<void> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const list = await this.getCategories();
+      const updated = list.map((c: string) => c === oldVal ? newVal : c);
+      localStorage.setItem('v2_cmms_categories', JSON.stringify(updated));
+      return;
+    }
+    const { error: configError } = await supabase.from('asset_categories').update({ name: newVal }).eq('name', oldVal);
+    if (configError) throw configError;
+
+    const { error: machineError } = await supabase.from('machines').update({ category: newVal }).eq('category', oldVal);
+    if (machineError) throw machineError;
+  },
 
   // ASSET TYPES
   async getAssetTypes(): Promise<string[]> {
@@ -297,6 +339,22 @@ export const MasterDataService = {
     }
     const { error } = await supabase.from('machine_types').delete().eq('name', name);
     if (error) throw error;
+  },
+  async updateAssetType(oldVal: string, newVal: string): Promise<void> {
+    if (import.meta.env.VITE_USE_MOCK === 'true') {
+      const list = await this.getAssetTypes();
+      const updated = list.map((t: string) => t === oldVal ? newVal : t);
+      localStorage.setItem('v2_cmms_asset_types', JSON.stringify(updated));
+      return;
+    }
+    const { error: configError } = await supabase.from('machine_types').update({ name: newVal }).eq('name', oldVal);
+    if (configError) throw configError;
+
+    const { error: machineError } = await supabase.from('machines').update({ type: newVal }).eq('type', oldVal);
+    if (machineError) throw machineError;
+
+    const { error: orderError } = await supabase.from('work_orders').update({ equipment_type: newVal }).eq('equipment_type', oldVal);
+    if (orderError) throw orderError;
   },
 
   // SETTINGS (Metadata)
