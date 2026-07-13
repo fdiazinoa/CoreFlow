@@ -41,7 +41,8 @@ const parseExcelRow = (rawRow: any): Omit<SparePart, 'id'> | null => {
         unitOfMeasure: normalizedRow['unidaddemedida'] || 'PCS',
         cost: parseFloat(normalizedRow['costounitariord'] || normalizedRow['costo'] || '0') || 0,
         description: normalizedRow['descripcion'] || '',
-        supplier: normalizedRow['proveedor'] || normalizedRow['supplier'] || ''
+        supplier: normalizedRow['proveedor'] || normalizedRow['supplier'] || '',
+        company: String(normalizedRow['empresa'] || normalizedRow['company'] || '').trim()
     } as Omit<SparePart, 'id'>;
 };
 
@@ -189,6 +190,7 @@ export const ImportSpareParts: React.FC<ImportSparePartsProps> = ({ onClose, onS
                                             <tr>
                                                 <th className="px-4 py-3">SKU / Code</th>
                                                 <th className="px-4 py-3">Name</th>
+                                                <th className="px-4 py-3">Empresa</th>
                                                 <th className="px-4 py-3">Category</th>
                                                 <th className="px-4 py-3 text-right">Stock</th>
                                                 <th className="px-4 py-3 text-right">Cost</th>
@@ -199,6 +201,7 @@ export const ImportSpareParts: React.FC<ImportSparePartsProps> = ({ onClose, onS
                                                 <tr key={idx} className="hover:bg-gray-50">
                                                     <td className="px-4 py-3 font-medium text-gray-900">{item.partNumber}</td>
                                                     <td className="px-4 py-3">{item.name}</td>
+                                                    <td className="px-4 py-3">{item.company || '-'}</td>
                                                     <td className="px-4 py-3">
                                                         <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
                                                             {item.category}
