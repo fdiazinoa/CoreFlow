@@ -4,7 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useMasterStore } from '../src/stores/useMasterStore';
 import { DocumentService } from '../src/services/documentService';
 import { supabase } from '../src/services/supabaseClient';
-import { Box, Wifi, Plus, X, Camera, FileText, Server, Clock, Calendar, Pencil, Eye, Download, Trash2, Lock, AlertCircle } from 'lucide-react';
+import { Box, Wifi, Plus, X, Camera, FileText, Server, Clock, Calendar, Pencil, Eye, Download, Trash2, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { TablePagination } from './shared/TablePagination';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,7 +14,8 @@ export const MachinesList: React.FC = () => {
     branches, categories, assetTypes, zones: zoneStructures,
     maintenancePlans,
     parts, // To load parts for Kardex
-    machinePagination: pagination, setMachinePage: setPage, machineFilters, setMachineFilters, isLoading
+    machinePagination: pagination, setMachinePage: setPage, machineFilters, setMachineFilters, isLoading,
+    fetchMasterData
   } = useMasterStore();
 
   const { t } = useLanguage();
@@ -121,6 +122,7 @@ export const MachinesList: React.FC = () => {
   const [selectedKardexPartManual, setSelectedKardexPartManual] = useState<string>('');
   const [searchKardexPartManual, setSearchKardexPartManual] = useState<string>('');
   const [isKardexDropdownOpenManual, setIsKardexDropdownOpenManual] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [newManualAsset, setNewManualAsset] = useState<Partial<Machine> & { customIntervals?: string }>({
     name: '',
@@ -146,6 +148,7 @@ export const MachinesList: React.FC = () => {
   });
 
   // Logic
+
   const filteredMachines = machines.filter(m => {
     const matchesSearch = assetSearch === '' ||
       m.name.toLowerCase().includes(assetSearch.toLowerCase()) ||
@@ -245,7 +248,7 @@ export const MachinesList: React.FC = () => {
     }
   };
 
-  const handleGatewaySubmit = (e: React.FormEvent) => {
+  const handleGatewaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMachine.name) return;
 
@@ -277,32 +280,40 @@ export const MachinesList: React.FC = () => {
       criticalParts: newMachine.criticalParts
     };
 
-    if (editingId) {
-      const existing = machines.find(m => m.id === editingId);
-      if (existing) {
-        updateMachine({
-          ...existing,
+    setIsSaving(true);
+    try {
+      if (editingId) {
+        const existing = machines.find(m => m.id === editingId);
+        if (existing) {
+          await updateMachine({
+            ...existing,
+            ...commonUpdate
+          });
+        }
+      } else {
+        const machine: Machine = {
+          id: crypto.randomUUID(),
+          status: MachineStatus.IDLE,
+          location: { x: 0, y: 0 },
+          zone: zones[0],
+          isIot: true,
+          lastMaintenance: new Date().toISOString(),
+          nextMaintenance: '',
+          telemetry: { timestamp: new Date().toISOString(), temperature: 0, vibration: 0, pressure: 0, powerConsumption: 0 },
+          history: [],
           ...commonUpdate
-        });
+        };
+        await addMachine(machine);
       }
-    } else {
-      const machine: Machine = {
-        id: crypto.randomUUID(),
-        status: MachineStatus.IDLE,
-        location: { x: 0, y: 0 },
-        zone: zones[0],
-        isIot: true,
-        lastMaintenance: new Date().toISOString(),
-        nextMaintenance: '',
-        telemetry: { timestamp: new Date().toISOString(), temperature: 0, vibration: 0, pressure: 0, powerConsumption: 0 },
-        history: [],
-        ...commonUpdate
-      };
-      addMachine(machine);
-    }
 
-    setShowGatewayModal(false);
-    setEditingId(null);
+      setShowGatewayModal(false);
+      setEditingId(null);
+    } catch (error: any) {
+      console.error('Error saving gateway machine:', error);
+      alert(`❌ Error al guardar el equipo: ${error.message || 'Verifique la conexión o los permisos.'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleManualAssetSubmit = async (e: React.FormEvent) => {
@@ -340,6 +351,7 @@ export const MachinesList: React.FC = () => {
       criticalParts: newManualAsset.criticalParts
     };
 
+    setIsSaving(true);
     try {
       if (editingId) {
         const existing = machines.find(m => m.id === editingId);
@@ -370,6 +382,31 @@ export const MachinesList: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving machine:', error);
       alert(`❌ Error al guardar el equipo: ${error.message || 'Verifique la conexión o los permisos.'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (machine: Machine) => {
+    if (!canManage) return;
+    const newStatus = machine.isActive !== false ? false : true;
+    const confirmMsg = newStatus
+      ? `¿Estás seguro de que deseas activar el equipo "${machine.name}"?`
+      : `¿Estás seguro de que deseas inactivar el equipo "${machine.name}"?`;
+
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsSaving(true);
+    try {
+      const updated = { ...machine, isActive: newStatus };
+      await updateMachine(updated);
+      setViewingMachine(null);
+      await fetchMasterData();
+    } catch (error: any) {
+      console.error('Error toggling machine active status:', error);
+      alert(`❌ Error al cambiar el estado del equipo: ${error.message || 'Verifique la conexión o los permisos.'}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -814,21 +851,39 @@ export const MachinesList: React.FC = () => {
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-4 border-t border-industrial-700 bg-industrial-900/50 flex justify-end gap-3">
-                  <button
-                    onClick={() => setViewingMachine(null)}
-                    className="px-4 py-2 text-sm text-industrial-400 hover:text-white"
-                  >
-                    Cerrar
-                  </button>
-                  <button
-                    onClick={() => handleEditFromDetail(viewingMachine)}
-                    disabled={!canManage}
-                    className={`px-4 py-2 ${canManage ? 'bg-industrial-600 hover:bg-industrial-500' : 'bg-industrial-700/50 opacity-50 cursor-not-allowed'} text-white rounded text-sm font-bold shadow flex items-center gap-2`}
-                    title={!canManage ? "No tiene permisos para editar equipos" : ""}
-                  >
-                    {canManage ? <Pencil size={14} /> : <Lock size={14} />} Editar Equipo
-                  </button>
+                <div className="p-4 border-t border-industrial-700 bg-industrial-900/50 flex justify-between items-center">
+                  <div>
+                    <button
+                      onClick={() => handleToggleActive(viewingMachine)}
+                      disabled={!canManage}
+                      className={`px-4 py-2 rounded text-sm font-bold border transition-colors flex items-center gap-2 ${
+                        !canManage
+                          ? 'bg-industrial-800/50 opacity-50 cursor-not-allowed text-industrial-500 border-industrial-700'
+                          : viewingMachine.isActive === false
+                            ? 'bg-emerald-900/40 text-emerald-400 border-emerald-500/50 hover:bg-emerald-900/60 shadow-lg'
+                            : 'bg-red-900/40 text-red-400 border-red-500/50 hover:bg-red-900/60 shadow-lg'
+                      }`}
+                      title={!canManage ? "No tiene permisos para modificar equipos" : ""}
+                    >
+                      {viewingMachine.isActive === false ? 'Activar Equipo' : 'Inactivar Equipo'}
+                    </button>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setViewingMachine(null)}
+                      className="px-4 py-2 text-sm text-industrial-400 hover:text-white"
+                    >
+                      Cerrar
+                    </button>
+                    <button
+                      onClick={() => handleEditFromDetail(viewingMachine)}
+                      disabled={!canManage}
+                      className={`px-4 py-2 ${canManage ? 'bg-industrial-600 hover:bg-industrial-500' : 'bg-industrial-700/50 opacity-50 cursor-not-allowed'} text-white rounded text-sm font-bold shadow flex items-center gap-2`}
+                      title={!canManage ? "No tiene permisos para editar equipos" : ""}
+                    >
+                      {canManage ? <Pencil size={14} /> : <Lock size={14} />} Editar Equipo
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1197,15 +1252,18 @@ export const MachinesList: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowGatewayModal(false)}
-                  className="px-4 py-2 rounded text-sm text-industrial-300 hover:text-white hover:bg-industrial-700 transition-colors"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded text-sm text-industrial-300 hover:text-white hover:bg-industrial-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t('workforce.modal.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded text-sm bg-industrial-accent text-white font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-blue-900/20"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded text-sm bg-industrial-accent text-white font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-blue-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {editingId ? 'Guardar Cambios' : 'Registrar Activo'}
+                  {isSaving && <Loader2 className="animate-spin w-4 h-4" />}
+                  {isSaving ? (editingId ? 'Guardando...' : 'Registrando...') : (editingId ? 'Guardar Cambios' : 'Registrar Activo')}
                 </button>
               </div>
             </form>
@@ -1568,15 +1626,18 @@ export const MachinesList: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowManualAssetModal(false)}
-                  className="px-4 py-2 rounded text-sm text-industrial-300 hover:text-white hover:bg-industrial-700 transition-colors"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded text-sm text-industrial-300 hover:text-white hover:bg-industrial-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t('workforce.modal.cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded text-sm bg-industrial-700 hover:bg-industrial-600 text-white font-medium transition-colors border border-industrial-600"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded text-sm bg-industrial-700 hover:bg-industrial-600 text-white font-medium transition-colors border border-industrial-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {editingId ? 'Guardar Cambios' : 'Registrar Activo'}
+                  {isSaving && <Loader2 className="animate-spin w-4 h-4" />}
+                  {isSaving ? (editingId ? 'Guardando...' : 'Registrando...') : (editingId ? 'Guardar Cambios' : 'Registrar Activo')}
                 </button>
               </div>
             </form>

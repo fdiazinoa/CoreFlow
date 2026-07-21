@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryService } from '../../services';
 import { SparePart, StockReception, ExtendedPurchaseRequest } from '../../types/inventory';
-import { ArrowDownCircle, Clock, FileText, Package, ChevronDown, ChevronRight, Search, FileDown, Filter, X } from 'lucide-react';
+import { ArrowDownCircle, Clock, FileText, Package, ChevronDown, ChevronRight, Search, FileDown, Filter, X, Loader2 } from 'lucide-react';
 import { TablePagination } from '../shared/TablePagination';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -24,6 +24,7 @@ export const ReceptionForm: React.FC = () => {
     // Purchase Request Linking State
     const [purchaseRequests, setPurchaseRequests] = useState<ExtendedPurchaseRequest[]>([]);
     const [selectedPurchaseRequestId, setSelectedPurchaseRequestId] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // --- History State ---
     const [receptions, setReceptions] = useState<StockReception[]>([]);
@@ -242,6 +243,7 @@ export const ReceptionForm: React.FC = () => {
             return;
         }
 
+        setIsSubmitting(true);
         try {
             if (selectedPurchaseRequestId) {
                 // Use the central method for processing Purchase Receptions
@@ -279,7 +281,9 @@ export const ReceptionForm: React.FC = () => {
             inventoryService.getAllParts(1, 1000).then(res => setParts(res.data));
         } catch (err) {
             console.error(err);
-            setMessage({ type: 'error', text: 'Error al procesar la recepción.' });
+            setMessage({ type: 'error', text: 'Error al registrar la recepción.' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -468,10 +472,11 @@ export const ReceptionForm: React.FC = () => {
                     <div className="pt-4 border-t border-industrial-700">
                         <button
                             onClick={handleReceive}
-                            disabled={itemsToReceive.length === 0}
-                            className="w-full px-4 py-3 border border-transparent rounded-lg shadow-lg shadow-emerald-900/20 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-all disabled:opacity-50 disabled:grayscale"
+                            disabled={itemsToReceive.length === 0 || isSubmitting}
+                            className="w-full px-4 py-3 border border-transparent rounded-lg shadow-lg shadow-emerald-900/20 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2"
                         >
-                            Registrar Ingreso ({itemsToReceive.length} ítems)
+                            {isSubmitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                            {isSubmitting ? 'Registrando Ingreso...' : `Registrar Ingreso (${itemsToReceive.length} ítems)`}
                         </button>
                     </div>
                 </div>

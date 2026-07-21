@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryService } from '../../services';
 import { SparePart, RequestPriority } from '../../types/inventory';
-import { AlertTriangle, Plus, Trash2, Search, Edit, X, Save as SaveIcon } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Search, Edit, X, Save as SaveIcon, Loader2 } from 'lucide-react';
 
 import { PartsRequest, RequestItem } from '../../types/inventory';
 
@@ -25,6 +25,7 @@ export const PartRequestForm: React.FC<PartRequestFormProps> = ({ initialData, o
     const [quantity, setQuantity] = useState(1);
     const [usageLocation, setUsageLocation] = useState('');
     const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Map initial items to form state
     const [requestItems, setRequestItems] = useState<{
@@ -131,6 +132,7 @@ export const PartRequestForm: React.FC<PartRequestFormProps> = ({ initialData, o
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             if (initialData) {
                 // UPDATE logic
@@ -167,6 +169,8 @@ export const PartRequestForm: React.FC<PartRequestFormProps> = ({ initialData, o
         } catch (error) {
             console.error(error);
             setFeedback({ type: 'error', message: 'Error al procesar la solicitud.' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -399,17 +403,19 @@ export const PartRequestForm: React.FC<PartRequestFormProps> = ({ initialData, o
                         <button
                             type="button"
                             onClick={onCancel}
-                            className="px-6 py-2.5 mr-3 border border-industrial-600 rounded-lg text-sm font-bold text-industrial-300 hover:bg-industrial-700 focus:outline-none transition-all"
+                            disabled={isSubmitting}
+                            className="px-6 py-2.5 mr-3 border border-industrial-600 rounded-lg text-sm font-bold text-industrial-300 hover:bg-industrial-700 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancelar
                         </button>
                     )}
                     <button
                         type="submit"
-                        disabled={requestItems.length === 0}
-                        className="px-6 py-2.5 border border-transparent rounded-lg shadow-lg shadow-emerald-900/20 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        disabled={requestItems.length === 0 || isSubmitting}
+                        className="px-6 py-2.5 border border-transparent rounded-lg shadow-lg shadow-emerald-900/20 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                     >
-                        {initialData ? 'Guardar Cambios' : 'Crear Solicitud'}
+                        {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isSubmitting ? 'Procesando...' : (initialData ? 'Guardar Cambios' : 'Crear Solicitud')}
                     </button>
                 </div>
             </form>

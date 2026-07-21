@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PartsRequest, SparePart, PurchaseRequest } from '../../types/inventory';
-import { X, Download, AlertCircle, ShoppingCart, Trash2, History, FileText, ChevronRight } from 'lucide-react';
+import { X, Download, AlertCircle, ShoppingCart, Trash2, History, FileText, ChevronRight, Loader2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useMasterStore } from '../../stores/useMasterStore';
@@ -23,6 +23,7 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({ requ
 
     const [viewMode, setViewMode] = useState<'CREATE' | 'HISTORY'>('CREATE');
     const [selectedHistoryItem, setSelectedHistoryItem] = useState<PurchaseRequest | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Initialize with pending items
     useEffect(() => {
@@ -154,6 +155,7 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({ requ
         const doc = generatePDFDocument(itemsList, request.requestNumber, dateStr, request.technicianId);
         doc.save(`${purchaseReqNumber}.pdf`);
 
+        setIsSaving(true);
         // Save History
         try {
             const newPurchaseRequest: PurchaseRequest = {
@@ -175,6 +177,8 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({ requ
             // El usuario solicitó eliminar la ventana de confirmación (alert) al guardar el historial. 
             // Continuamos sin interrumpir, el PDF ya se descargó.
             onSuccess(request);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -350,21 +354,22 @@ export const PurchaseRequestModal: React.FC<PurchaseRequestModalProps> = ({ requ
                 <div className="p-6 border-t border-industrial-700 bg-industrial-900/30 rounded-b-lg flex justify-end gap-3">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 bg-industrial-800 border border-industrial-600 hover:bg-industrial-700 text-white rounded-lg font-bold text-sm transition-colors"
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-industrial-800 border border-industrial-600 hover:bg-industrial-700 text-white rounded-lg font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cerrar
                     </button>
                     {viewMode === 'CREATE' && (
                         <button
                             onClick={handleGenerateRequest}
-                            disabled={activeItems.length === 0}
-                            className={`flex items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-lg ${activeItems.length === 0
-                                ? 'bg-industrial-700 text-industrial-500 cursor-not-allowed'
+                            disabled={activeItems.length === 0 || isSaving}
+                            className={`flex items-center px-4 py-2 rounded-lg font-bold text-sm transition-colors shadow-lg ${activeItems.length === 0 || isSaving
+                                ? 'bg-industrial-700 text-industrial-500 cursor-not-allowed opacity-50'
                                 : 'bg-orange-600 hover:bg-orange-700 text-white'
                                 }`}
                         >
-                            <Download className="w-4 h-4 mr-2" />
-                            Generar Solicitud
+                            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                            {isSaving ? 'Guardando...' : 'Generar Solicitud'}
                         </button>
                     )}
                 </div>

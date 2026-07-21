@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Server } from 'lucide-react';
+import { X, Server, Loader2 } from 'lucide-react';
 import { useMasterStore } from '../../src/stores/useMasterStore';
 import { Machine, MachineStatus } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -7,7 +7,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 interface MachineModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (machine: Partial<Machine>) => void;
+    onSave: (machine: Partial<Machine>) => Promise<void> | void;
     initialData?: Partial<Machine>;
     isEditing?: boolean;
 }
@@ -15,6 +15,7 @@ interface MachineModalProps {
 export const MachineModal: React.FC<MachineModalProps> = ({ isOpen, onClose, onSave, initialData, isEditing = false }) => {
     const { t } = useLanguage();
     const { branches, categories, assetTypes, zones } = useMasterStore();
+    const [isSaving, setIsSaving] = useState(false);
 
     // Local state for form
     const [formData, setFormData] = useState<Partial<Machine>>({
@@ -52,10 +53,17 @@ export const MachineModal: React.FC<MachineModalProps> = ({ isOpen, onClose, onS
 
     if (!isOpen) return null;
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
-        onClose();
+        setIsSaving(true);
+        try {
+            await onSave(formData);
+            onClose();
+        } catch (error) {
+            console.error('Error saving machine:', error);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -185,11 +193,12 @@ export const MachineModal: React.FC<MachineModalProps> = ({ isOpen, onClose, onS
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-industrial-700 mt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 rounded text-industrial-300 hover:text-white hover:bg-industrial-700 font-medium text-sm transition-colors">
+                        <button type="button" onClick={onClose} disabled={isSaving} className="px-4 py-2 rounded text-industrial-300 hover:text-white hover:bg-industrial-700 font-medium text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {t('common.cancel')}
                         </button>
-                        <button type="submit" className="px-4 py-2 rounded bg-industrial-accent hover:bg-industrial-accent-hover text-white font-bold text-sm shadow-lg shadow-industrial-accent/20 transition-all">
-                            {t('common.save')}
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 rounded bg-industrial-accent hover:bg-industrial-accent-hover text-white font-bold text-sm shadow-lg shadow-industrial-accent/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                            {isSaving && <Loader2 className="animate-spin w-4 h-4" />}
+                            {isSaving ? 'Guardando...' : t('common.save')}
                         </button>
                     </div>
 

@@ -58,7 +58,7 @@ export const Dashboard: React.FC = () => {
     setIsMachineModalOpen(true);
   };
 
-  const handleSaveMachine = (machine: Partial<Machine>) => {
+  const handleSaveMachine = async (machine: Partial<Machine>) => {
     const newMachine: Machine = {
       id: `m-${Date.now()}`,
       name: machine.name || 'New Machine',
@@ -79,7 +79,7 @@ export const Dashboard: React.FC = () => {
       ...machine
     } as Machine;
 
-    addMachine(newMachine);
+    await addMachine(newMachine);
     setIsMachineModalOpen(false);
   };
 

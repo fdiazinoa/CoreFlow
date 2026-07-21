@@ -9,6 +9,8 @@ import { useWorkOrderStore } from './useWorkOrderStore';
 // Re-export GeneralSettings as PlantSettings for backward compatibility
 type PlantSettings = GeneralSettings;
 
+let lastFetchId = 0;
+
 interface MasterState {
     machines: Machine[];
     technicians: Technician[];
@@ -66,7 +68,7 @@ interface MasterState {
     };
 
     // Actions
-    fetchMasterData: () => Promise<void>;
+    fetchMasterData: (force?: boolean) => Promise<void>;
     fetchInventoryData: () => Promise<void>;
     setMachinePage: (page: number) => Promise<void>;
     setInventoryPage: (page: number) => Promise<void>;
@@ -254,11 +256,10 @@ export const useMasterStore = create<MasterState>((set, get) => ({
         }
     },
 
-    fetchMasterData: async () => {
+    fetchMasterData: async (force = false) => {
+        lastFetchId++;
+        const currentFetchId = lastFetchId;
         const state = get();
-        // Optimization: only skip if BOTH are initialized and have totals (or we need a better check)
-        // For server-side pagination, we usually want to allow re-fetching.
-        if (state.isLoading) return; 
 
         set({ isLoading: true, error: null });
 
@@ -288,9 +289,11 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                     plantSettings
                 ] = await Promise.all([
                     safeFetch(MasterDataService.getMachines(machinePage, machineLimit, machineFilters), { data: [], total: 0 }, 'machines'),
-                    safeFetch(MasterDataService.getZones(), [], 'zones'),
-                    safeFetch(SettingsSupabaseService.getSettings(), get().plantSettings, 'plantSettings')
+                    (!force && get().zones.length > 0) ? Promise.resolve(get().zones) : safeFetch(MasterDataService.getZones(), [], 'zones'),
+                    (!force && get().plantSettings && Object.keys(get().plantSettings).length > 0 && (get().plantSettings as any).width) ? Promise.resolve(get().plantSettings) : safeFetch(SettingsSupabaseService.getSettings(), get().plantSettings, 'plantSettings')
                 ]);
+
+                if (currentFetchId !== lastFetchId) return;
 
                 const currentState = get();
                 const machines = machinesResult.data;
@@ -311,6 +314,7 @@ export const useMasterStore = create<MasterState>((set, get) => ({
 
                 // Phase 2: Defer secondary data (inventory, dropdowns) to a background task
                 setTimeout(async () => {
+                    if (currentFetchId !== lastFetchId) return;
                     const { page: invPage, limit: invLimit } = get().inventoryPagination;
                     const invFilters = get().inventoryFilters;
                     const [
@@ -327,15 +331,17 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                     ] = await Promise.all([
                         safeFetch(inventoryService.getAllParts(invPage, invLimit, invFilters), { data: [], total: 0 }, 'parts'),
                         safeFetch(MasterDataService.getTechnicians(), [], 'technicians'),
-                        safeFetch(MasterDataService.getBranches(), [], 'branches'),
-                        safeFetch(MasterDataService.getCategories(), [], 'categories'),
-                        safeFetch(MasterDataService.getAssetTypes(), [], 'assetTypes'),
-                        safeFetch(MasterDataService.getPartCategories(), [], 'partCategories'),
-                        safeFetch(MasterDataService.getPartLocations(), [], 'partLocations'),
-                        safeFetch(MasterDataService.getPartUnits(), [], 'partUnits'),
-                        safeFetch(inventoryService.getPartCompanies(), [], 'partCompanies'),
-                        safeFetch(MasterDataService.getPartSuppliers(), [], 'partSuppliers')
+                        (!force && get().branches.length > 0) ? Promise.resolve(get().branches) : safeFetch(MasterDataService.getBranches(), [], 'branches'),
+                        (!force && get().categories.length > 0) ? Promise.resolve(get().categories) : safeFetch(MasterDataService.getCategories(), [], 'categories'),
+                        (!force && get().assetTypes.length > 0) ? Promise.resolve(get().assetTypes) : safeFetch(MasterDataService.getAssetTypes(), [], 'assetTypes'),
+                        (!force && get().partCategories.length > 0) ? Promise.resolve(get().partCategories) : safeFetch(MasterDataService.getPartCategories(), [], 'partCategories'),
+                        (!force && get().partLocations.length > 0) ? Promise.resolve(get().partLocations) : safeFetch(MasterDataService.getPartLocations(), [], 'partLocations'),
+                        (!force && get().partUnits.length > 0) ? Promise.resolve(get().partUnits) : safeFetch(MasterDataService.getPartUnits(), [], 'partUnits'),
+                        (!force && get().partCompanies.length > 0) ? Promise.resolve(get().partCompanies) : safeFetch(inventoryService.getPartCompanies(), [], 'partCompanies'),
+                        (!force && get().partSuppliers.length > 0) ? Promise.resolve(get().partSuppliers) : safeFetch(MasterDataService.getPartSuppliers(), [], 'partSuppliers')
                     ]);
+
+                    if (currentFetchId !== lastFetchId) return;
 
                     set({
                         parts: inventoryResult.data,
@@ -646,10 +652,10 @@ export const useMasterStore = create<MasterState>((set, get) => ({
                 machines: state.machines.map(m => m.type === oldVal ? { ...m, type: newVal } : m)
             }));
             useWorkOrderStore.setState((state) => ({
-                workOrders: state.workOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal } : o),
-                allOrders: state.allOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal } : o),
-                calendarOrders: state.calendarOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal } : o)
-            }));
+                workOrders: state.workOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal as any } : o),
+                allOrders: state.allOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal as any } : o),
+                calendarOrders: state.calendarOrders.map(o => o.equipmentType === oldVal ? { ...o, equipmentType: newVal as any } : o)
+            }) as any);
         } catch (error: any) {
             set({ error: error.message });
             throw error;
