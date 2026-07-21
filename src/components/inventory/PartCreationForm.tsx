@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { inventoryService } from '../../services';
-import { Package, PlusCircle, Save, Edit, Plus, FileSpreadsheet } from 'lucide-react';
+import { Package, PlusCircle, Save, Edit, Plus, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { SparePart } from '../../types/inventory';
 import { useMasterStore } from '../../stores/useMasterStore';
 import { ImportSpareParts } from './ImportSpareParts';
@@ -53,6 +53,7 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
     // Formatting state for display
     const [displayCost, setDisplayCost] = useState('');
     const [showImportModal, setShowImportModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (machines.length === 0) {
@@ -149,6 +150,7 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         try {
             // Uniqueness check for partNumber (SKU)
             if (!initialData) {
@@ -156,6 +158,7 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
                 const isDuplicate = parts.some(p => p.partNumber.toLowerCase() === formData.partNumber.toLowerCase());
                 if (isDuplicate) {
                     setFeedback({ type: 'error', message: 'El código del repuesto ya existe.' });
+                    setIsSubmitting(false);
                     return;
                 }
             }
@@ -216,6 +219,8 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
         } catch (error: any) {
             console.error(error);
             setFeedback({ type: 'error', message: error.message || 'Error al procesar la solicitud.' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -615,17 +620,19 @@ export const PartCreationForm: React.FC<PartCreationFormProps> = ({ initialData,
                         <button
                             type="button"
                             onClick={onCancel}
-                            className="px-6 py-3 border border-industrial-600 rounded-lg text-sm font-bold text-industrial-300 hover:bg-industrial-700 focus:outline-none transition-all"
+                            disabled={isSubmitting}
+                            className="px-6 py-3 border border-industrial-600 rounded-lg text-sm font-bold text-industrial-300 hover:bg-industrial-700 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancelar
                         </button>
                     )}
                     <button
                         type="submit"
-                        className="px-6 py-3 border border-transparent rounded-lg shadow-lg shadow-blue-900/20 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-all flex items-center justify-center gap-2"
+                        disabled={isSubmitting}
+                        className="px-6 py-3 border border-transparent rounded-lg shadow-lg shadow-blue-900/20 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Save className="w-5 h-5" />
-                        {initialData ? 'Guardar Cambios' : 'Guardar Repuesto'}
+                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                        {isSubmitting ? 'Guardando...' : (initialData ? 'Guardar Cambios' : 'Guardar Repuesto')}
                     </button>
                 </div>
             </form >

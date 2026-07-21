@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { WorkOrder, Machine, Technician, Priority, WorkOrderStatus, SparePart, WorkOrderStage, MaintenanceTask, UserRole } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { X, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, Wrench, Package, ShieldCheck, FileKey, Info, ChevronRight, Lock, Save, PenTool, CheckSquare, Plus, Trash2, Camera, Upload, ImageIcon, Trash, FileIcon, UserCircle, Download, ArrowRight, PlayCircle, Settings, UploadCloud, Image, Paperclip } from 'lucide-react';
+import { X, Calendar, User, FileText, CheckCircle, Clock, AlertCircle, Wrench, Package, ShieldCheck, FileKey, Info, ChevronRight, Lock, Save, PenTool, CheckSquare, Plus, Trash2, Camera, Upload, ImageIcon, Trash, FileIcon, UserCircle, Download, ArrowRight, PlayCircle, Settings, UploadCloud, Image, Paperclip, Loader2 } from 'lucide-react';
 import { ProtocolViewer } from './ProtocolViewer';
 import { useMasterStore } from '../src/stores/useMasterStore';
 import { useUserStore } from '../src/stores/useUserStore';
@@ -63,7 +63,7 @@ interface MaintenanceFormProps {
    type: 'R-MANT-02' | 'R-MANT-05';
    machines: Machine[];
    technicians: Technician[];
-   onSave: (order: WorkOrder) => void;
+   onSave: (order: WorkOrder) => Promise<void> | void;
    onSaveAndStay?: (order: WorkOrder) => Promise<WorkOrder | void> | void;
    onCancel: () => void;
    initialMachineId?: string;
@@ -116,6 +116,7 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
    const [duration, setDuration] = useState<string>('0h 0m');
    const [editingSection, setEditingSection] = useState<number | null>(null);
    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+   const [isSaving, setIsSaving] = useState(false);
 
    // Helper UI renderers - Defined early to avoid TDZ and usage in handlers
    const isSection1Editable = (formData.currentStage === WorkOrderStage.DRAFT && hasPermission('create_wo')) || (editingSection === 1 && hasPermission('edit_wo'));
@@ -345,25 +346,26 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
    };
 
    const handleInternalSave = async (order: WorkOrder, stay: boolean = false) => {
-      const orderToSave = {
-         ...order,
-         formType: type,
-         type: order.type || (type === 'R-MANT-02' ? 'PREVENTIVE' : 'CORRECTIVE'),
-         totalMaintenanceCost: order.consumedParts?.reduce((sum, p) => sum + (p.totalCost || 0), 0) || 0
-      };
-      if (!orderToSave.title || orderToSave.title.trim() === '') {
-         const machine = machines.find(m => m.id === orderToSave.machineId);
-         const machineName = machine ? (machine.alias || machine.name) : 'Unknown Machine';
+      setIsSaving(true);
+      try {
+         const orderToSave = {
+            ...order,
+            formType: type,
+            type: order.type || (type === 'R-MANT-02' ? 'PREVENTIVE' : 'CORRECTIVE'),
+            totalMaintenanceCost: order.consumedParts?.reduce((sum, p) => sum + (p.totalCost || 0), 0) || 0
+         };
+         if (!orderToSave.title || orderToSave.title.trim() === '') {
+            const machine = machines.find(m => m.id === orderToSave.machineId);
+            const machineName = machine ? (machine.alias || machine.name) : 'Unknown Machine';
 
-         if (type === 'R-MANT-02') {
-            orderToSave.title = `${t('mant02.formTitle')} - ${machineName} - ${orderToSave.interval || 'N/A'}`;
-         } else {
-            const desc = orderToSave.description || 'Reporte de Falla';
-            orderToSave.title = `Correctivo - ${machineName} - ${desc.substring(0, 30)}`;
+            if (type === 'R-MANT-02') {
+               orderToSave.title = `${t('mant02.formTitle')} - ${machineName} - ${orderToSave.interval || 'N/A'}`;
+            } else {
+               const desc = orderToSave.description || 'Reporte de Falla';
+               orderToSave.title = `Correctivo - ${machineName} - ${desc.substring(0, 30)}`;
+            }
          }
-      }
-      if (stay && onSaveAndStay) {
-         try {
+         if (stay && onSaveAndStay) {
             const savedOrder = await onSaveAndStay(orderToSave);
             if (savedOrder && savedOrder.id && savedOrder.id !== formData.id) {
                console.log("Synchronizing Local ID from DB:", savedOrder.id);
@@ -373,11 +375,14 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                   displayId: savedOrder.displayId
                }));
             }
-         } catch(error) {
-             console.error("Error internally saving and staying", error);
+         } else {
+            await onSave(orderToSave);
          }
-      } else {
-         onSave(orderToSave);
+      } catch (error) {
+         console.error("Error saving work order:", error);
+         alert(`❌ Error al guardar la orden de trabajo: ${error || 'Unknown Error'}`);
+      } finally {
+         setIsSaving(false);
       }
    };
 
@@ -633,8 +638,13 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                         </button>
                      )}
                      {editingSection === 1 && (
-                        <button onClick={() => { setEditingSection(null); handleInternalSave(formData, true); }} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-lg">
-                           Guardar
+                        <button 
+                           disabled={isSaving}
+                           onClick={() => { setEditingSection(null); handleInternalSave(formData, true); }} 
+                           className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        >
+                           {isSaving && <Loader2 size={14} className="animate-spin" />}
+                           {isSaving ? 'Guardando...' : 'Guardar'}
                         </button>
                      )}
                   </div>
@@ -1033,11 +1043,22 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
 
                   {isSection1Editable && (
                      <div className="p-4 border-t border-emerald-500/30 flex justify-end gap-3">
-                        <button type="button" onClick={saveProgress} className="text-emerald-400 hover:text-white px-4 py-2 text-sm font-medium">
+                        <button 
+                           type="button" 
+                           disabled={isSaving}
+                           onClick={saveProgress} 
+                           className="text-emerald-400 hover:text-white px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                            Guardar Borrador
                         </button>
-                        <button type="button" onClick={transitionToRequested} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-colors flex items-center gap-2">
-                           Solicitar Mantenimiento <ArrowRight size={16} />
+                        <button 
+                           type="button" 
+                           disabled={isSaving}
+                           onClick={transitionToRequested} 
+                           className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           {isSaving && <Loader2 size={16} className="animate-spin" />}
+                           {isSaving ? 'Procesando...' : <>Solicitar Mantenimiento <ArrowRight size={16} /></>}
                         </button>
                      </div>
                   )}
@@ -1057,29 +1078,39 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                         2. Intervenciones de Mantenimiento {!isSection2Editable && <Lock size={14} />}
                      </h3>
                      <div className="flex gap-2">
-                        {formData.currentStage === WorkOrderStage.REQUESTED && hasPermission('execute_wo') && (
-                           <button onClick={startExecution} className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-1 rounded text-sm font-bold flex items-center gap-1 animate-pulse">
-                              <PlayCircle size={14} /> Iniciar Trabajo
-                           </button>
-                        )}
-                        {!isSection2Editable && (
-                           <button 
-                              onClick={() => hasPermission('edit_wo') && setEditingSection(2)} 
-                              className={`px-4 py-2 rounded text-sm font-bold transition-colors border ${
-                                 hasPermission('edit_wo') 
-                                 ? 'bg-pink-900/50 hover:bg-pink-800 text-pink-400 border-pink-500/30' 
-                                 : 'bg-pink-900/10 text-pink-400/30 border-pink-500/10 cursor-not-allowed opacity-50'
-                              }`}
-                           >
-                              Editar
-                           </button>
-                        )}
-                        {editingSection === 2 && (
-                           <button onClick={() => { setEditingSection(null); handleInternalSave(formData, true); }} className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-lg">
-                              Guardar
-                           </button>
-                        )}
-                     </div>
+                         {formData.currentStage === WorkOrderStage.REQUESTED && hasPermission('execute_wo') && (
+                            <button 
+                               disabled={isSaving}
+                               onClick={startExecution} 
+                               className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-1 rounded text-sm font-bold flex items-center gap-1 animate-pulse disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <PlayCircle size={14} />}
+                               {isSaving ? 'Iniciando...' : 'Iniciar Trabajo'}
+                            </button>
+                         )}
+                         {!isSection2Editable && (
+                            <button 
+                               onClick={() => hasPermission('edit_wo') && setEditingSection(2)} 
+                               className={`px-4 py-2 rounded text-sm font-bold transition-colors border ${
+                                  hasPermission('edit_wo') 
+                                  ? 'bg-pink-900/50 hover:bg-pink-800 text-pink-400 border-pink-500/30' 
+                                  : 'bg-pink-900/10 text-pink-400/30 border-pink-500/10 cursor-not-allowed opacity-50'
+                               }`}
+                            >
+                               Editar
+                            </button>
+                         )}
+                         {editingSection === 2 && (
+                            <button 
+                               disabled={isSaving}
+                               onClick={() => { setEditingSection(null); handleInternalSave(formData, true); }} 
+                               className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                               {isSaving && <Loader2 size={14} className="animate-spin" />}
+                               {isSaving ? 'Guardando...' : 'Guardar'}
+                            </button>
+                         )}
+                      </div>
                   </div>
 
                   <div className={`p-6`}>
@@ -1630,11 +1661,22 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
 
                   {isSection2Editable && (
                      <div className="p-4 border-t border-pink-500/30 flex justify-end gap-3">
-                        <button type="button" onClick={saveProgress} className="text-pink-400 hover:text-white px-4 py-2 text-sm font-medium">
+                        <button 
+                           type="button" 
+                           disabled={isSaving}
+                           onClick={saveProgress} 
+                           className="text-pink-400 hover:text-white px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
                            Guardar Progreso
                         </button>
-                        <button type="button" onClick={finishExecution} className="bg-pink-600 hover:bg-pink-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-colors flex items-center gap-2">
-                           Finalizar Ejecución <CheckCircle size={16} />
+                        <button 
+                           type="button" 
+                           disabled={isSaving}
+                           onClick={finishExecution} 
+                           className="bg-pink-600 hover:bg-pink-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           {isSaving && <Loader2 size={16} className="animate-spin" />}
+                           {isSaving ? 'Guardando...' : <>Finalizar Ejecución <CheckCircle size={16} /></>}
                         </button>
                      </div>
                   )}
@@ -1665,8 +1707,13 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                         </button>
                      )}
                      {editingSection === 3 && (
-                        <button onClick={() => { setEditingSection(null); handleInternalSave(formData, true); }} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-lg">
-                           Guardar
+                        <button 
+                           disabled={isSaving}
+                           onClick={() => { setEditingSection(null); handleInternalSave(formData, true); }} 
+                           className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded text-sm font-bold transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        >
+                           {isSaving && <Loader2 size={14} className="animate-spin" />}
+                           {isSaving ? 'Guardando...' : 'Guardar'}
                         </button>
                      )}
                   </div>
@@ -1928,11 +1975,20 @@ export const MaintenanceForm: React.FC<MaintenanceFormProps> = ({
                   {
                      isSection3Editable && (
                         <div className="p-4 border-t border-emerald-500/30 flex justify-end gap-4">
-                           <button onClick={() => setFormData(p => ({ ...p, currentStage: WorkOrderStage.EXECUTION, status: WorkOrderStatus.IN_PROGRESS }))} className="text-industrial-400 hover:text-white text-sm underline">
+                           <button 
+                              disabled={isSaving}
+                              onClick={() => setFormData(p => ({ ...p, currentStage: WorkOrderStage.EXECUTION, status: WorkOrderStatus.IN_PROGRESS }))} 
+                              className="text-industrial-400 hover:text-white text-sm underline disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
                               Rechazar (Volver a Ejecución)
                            </button>
-                           <button onClick={closeWorkOrder} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-colors flex items-center gap-2">
-                              Cerrar Mantenimiento <Save size={16} />
+                           <button 
+                              disabled={isSaving}
+                              onClick={closeWorkOrder} 
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded font-bold shadow-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                           >
+                              {isSaving && <Loader2 size={16} className="animate-spin" />}
+                              {isSaving ? 'Cerrando...' : <>Cerrar Mantenimiento <Save size={16} /></>}
                            </button>
                         </div>
                      )

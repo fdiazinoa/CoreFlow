@@ -120,6 +120,13 @@ export class MasterMockService {
             if (filters.zone && filters.zone !== 'all' && filters.zone !== '') {
                 machines = machines.filter(m => m.zone === filters.zone);
             }
+            if (filters.showInactive !== undefined) {
+                machines = machines.filter(m => filters.showInactive ? !m.isActive : m.isActive !== false);
+            } else {
+                machines = machines.filter(m => m.isActive !== false);
+            }
+        } else {
+            machines = machines.filter(m => m.isActive !== false);
         }
 
         const total = machines.length;

@@ -71,8 +71,8 @@ export const PlantMapContainer: React.FC<PlantMapContainerProps> = ({ machines, 
   const placedZones = zones.filter(z => (z.x !== undefined && z.y !== undefined && (z.x > 0 || z.y > 0)));
   const unplacedZones = zones.filter(z => !z.x && !z.y || (z.x === 0 && z.y === 0));
 
-  const placedMachines = machines.filter(m => (m.location?.x !== undefined && m.location?.y !== undefined && (m.location.x > 0 || m.location.y > 0)));
-  const unplacedMachines = machines.filter(m => !m.location || (m.location.x === 0 && m.location.y === 0));
+  const placedMachines = machines.filter(m => m.isActive !== false && (m.location?.x !== undefined && m.location?.y !== undefined && (m.location.x > 0 || m.location.y > 0)));
+  const unplacedMachines = machines.filter(m => m.isActive !== false && (!m.location || (m.location.x === 0 && m.location.y === 0)));
 
   // Determine actual display data (merging draft states with store states)
   const displayMachines = placedMachines.map(m => draftMachinePos?.id === m.id ? { ...m, location: { x: draftMachinePos.x, y: draftMachinePos.y } } : m);
