@@ -203,8 +203,8 @@ export const MachineSupabaseService = {
       updatePayload.running_hours = machine.runningHours;
     }
 
-    if (machine.lastMaintenance !== undefined) updatePayload.last_maintenance = machine.lastMaintenance;
-    if (machine.nextMaintenance !== undefined) updatePayload.next_maintenance = machine.nextMaintenance;
+    if (machine.lastMaintenance !== undefined) updatePayload.last_maintenance = machine.lastMaintenance || null;
+    if (machine.nextMaintenance !== undefined) updatePayload.next_maintenance = machine.nextMaintenance || null;
     if (machine.documents !== undefined) updatePayload.documents = machine.documents;
     if (machine.maintenancePlans !== undefined) updatePayload.maintenance_plans = machine.maintenancePlans;
     if (machine.criticalParts !== undefined) updatePayload.critical_parts = machine.criticalParts;
@@ -339,7 +339,7 @@ export const MachineSupabaseService = {
     // 1. Update machine hours & next maintenance
     const updatePayload: any = { running_hours: newTotalHours, updated_at: new Date().toISOString() };
     if (log.nextMaintenance !== undefined) {
-      updatePayload.next_maintenance = log.nextMaintenance;
+      updatePayload.next_maintenance = log.nextMaintenance || null;
     }
 
     const { error: updateError } = await supabase
@@ -433,7 +433,7 @@ export const MachineSupabaseService = {
       
       // If next maintenance was provided and is not undefined, update it as well
       if (log.nextMaintenance !== undefined) {
-        updateMachinePayload.next_maintenance = log.nextMaintenance;
+        updateMachinePayload.next_maintenance = log.nextMaintenance || null;
       }
 
       const { error: updateMachineError } = await supabase
