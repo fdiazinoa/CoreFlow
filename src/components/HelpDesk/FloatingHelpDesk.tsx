@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../services/supabaseClient';
 import html2canvas from 'html2canvas';
-import { HelpCircle, Headphones, X, Camera, Send, Ticket, PlusCircle, Trash2, RefreshCw, Check, Maximize, Crop } from 'lucide-react';
+import { HelpCircle, Headphones, X, Camera, Send, Ticket, PlusCircle, Trash2, RefreshCw, Check, Maximize, Crop, ChevronRight, ChevronLeft } from 'lucide-react';
 import { HelpDeskTicket } from '../../types/helpdesk';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -123,6 +123,45 @@ export const FloatingHelpDesk: React.FC = () => {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todos' | 'abiertos' | 'resueltos'>('todos');
+
+  // Collapsible Side Tab State
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const autoHideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearAutoHideTimer = () => {
+    if (autoHideTimerRef.current) {
+      clearTimeout(autoHideTimerRef.current);
+      autoHideTimerRef.current = null;
+    }
+  };
+
+  const startAutoHideTimer = () => {
+    clearAutoHideTimer();
+    autoHideTimerRef.current = setTimeout(() => {
+      setIsTabExpanded(false);
+    }, 5000);
+  };
+
+  const handleExpandTab = () => {
+    setIsTabExpanded(true);
+    startAutoHideTimer();
+  };
+
+  const handleMouseEnter = () => {
+    clearAutoHideTimer();
+  };
+
+  const handleMouseLeave = () => {
+    if (isTabExpanded) {
+      startAutoHideTimer();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearAutoHideTimer();
+    };
+  }, []);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -803,25 +842,74 @@ export const FloatingHelpDesk: React.FC = () => {
 
   return (
     <>
-      {/* Floating Button (Bottom Right) */}
+      {/* Collapsible Right-Side Support Tab */}
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 font-sans">
-          <button 
-            onClick={() => {
-              setIsOpen(true);
-              fetchTickets();
-            }}
-            className="relative bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full p-4 shadow-[0_8px_24px_rgba(37,99,235,0.4)] transition-all transform hover:scale-110 flex items-center justify-center group border border-blue-400/20"
-            aria-label="Abrir Help Desk"
-          >
-            <Headphones size={32} className="group-hover:rotate-12 transition-transform" />
-            {hasUnread && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border border-slate-900 shadow-md"></span>
-              </span>
-            )}
-          </button>
+        <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 font-sans select-none">
+          {!isTabExpanded ? (
+            /* Collapsed State: Subtle Right Edge Tab (Icon Only) */
+            <button
+              onClick={handleExpandTab}
+              className="flex items-center justify-center bg-slate-900/95 hover:bg-slate-800 text-blue-400 hover:text-blue-300 p-2.5 rounded-l-xl border-l-2 border-y border-blue-500/40 shadow-[0_4px_24px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all duration-300 hover:pl-3.5 group cursor-pointer"
+              title="Abrir soporte"
+              aria-label="Abrir soporte"
+            >
+              <div className="relative flex items-center justify-center">
+                <Headphones size={20} className="group-hover:scale-110 group-hover:rotate-12 transition-transform text-blue-400" />
+                {hasUnread && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                  </span>
+                )}
+              </div>
+            </button>
+          ) : (
+            /* Expanded State: Interactive Widget with Auto-Hide & Collapse */
+            <div
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              className="flex items-center gap-2 bg-slate-900/95 border-l-2 border-y border-blue-500/50 p-2 pl-3 rounded-l-2xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl transition-all duration-300 animate-in slide-in-from-right-4 duration-200"
+            >
+              <button
+                onClick={() => {
+                  setIsOpen(true);
+                  fetchTickets();
+                  setIsTabExpanded(false);
+                  clearAutoHideTimer();
+                }}
+                className="flex items-center gap-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3.5 py-2.5 rounded-xl font-medium text-sm shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                aria-label="Abrir Soporte"
+              >
+                <div className="relative">
+                  <Headphones size={18} className="group-hover:rotate-12 transition-transform" />
+                  {hasUnread && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                  )}
+                </div>
+                <span className="font-semibold whitespace-nowrap">Soporte</span>
+                {hasUnread && (
+                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-pulse">
+                    Nuevo
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsTabExpanded(false);
+                  clearAutoHideTimer();
+                }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-colors"
+                title="Esconder pestaña"
+                aria-label="Esconder pestaña"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
